@@ -5,7 +5,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.pm.FeatureGroupInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
@@ -29,6 +28,7 @@ import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.calib3d.Calib3d;
+import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.DMatch;
 import org.opencv.core.KeyPoint;
@@ -37,6 +37,7 @@ import org.opencv.core.MatOfDMatch;
 import org.opencv.core.MatOfKeyPoint;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
+import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.features2d.DescriptorExtractor;
 import org.opencv.features2d.DescriptorMatcher;
@@ -53,7 +54,6 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 
     // Used for logging success or failure messages
     private static final String TAG = "OCVSample::Activity";
-    private static final int MY_PERMISSIONS_REQUEST_CAMERA = 0;
 
     // Loads camera view of OpenCV for us to use. This lets us see using OpenCV
     private CameraBridgeViewBase mOpenCvCameraView;
@@ -79,9 +79,18 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         }
     };
 
+    //Índice das permissões. Neste caso há apenas a câmera.
+    private static final int MY_PERMISSIONS_REQUEST_CAMERA = 0;
+
+    //Thread usada para processamento em segundo plano
     private Thread t;
+    //Estado atual (não tem muita função por enquanto)
     private State state = State.Initializing;
 
+    /**
+     * Armazena o frame atual para que a thread de processamento o leia.
+     * Não atribua valores diretamente a esta variável! Utilize Setter e Getter para evitar conflitos.
+     */
     private Mat mRgba;
     private Mat descriptors_object;
     private Size gaussianBlurSize = new Size(9, 9);
@@ -90,10 +99,9 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
     private FeatureDetector fd;
     private DescriptorExtractor extractor;
     private DescriptorMatcher matcher;
+    //    private CLAHE clahe;
     private double max_dist = 0, min_dist = 100;
     Bitmap matchesBmp;
-
-//    private ImageView imageView;
 
     public MainActivity_show_camera() {
         Log.i(TAG, "Instantiated new " + this.getClass());
@@ -117,11 +125,18 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
             ActivityCompat.requestPermissions((Activity) getContext(),
                     new String[]{Manifest.permission.CAMERA}, MY_PERMISSIONS_REQUEST_CAMERA);
         } else {
-            ShowCamera();
+            ExibirCamera();
         }
+        //
     }
 
-    void InitializeOpenCV() {
+    @Override
+    public void onResume() {
+        super.onResume();
+        IniciarOpenCV();
+    }
+
+    void IniciarOpenCV() {
         if (!OpenCVLoader.initDebug()) {
             Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
             OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_1_0, this, mLoaderCallback);
@@ -130,17 +145,19 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
             mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
         }
         if (state == State.Initializing) {
-            //Inicializando variáveis
-            IniciarVariaveis();
+            //Inicializando variáveis, somente após o OpenCV ter inicializado com sucesso.
+            InicializarVariaveis();
         }
     }
 
-    void IniciarVariaveis() {
+    void InicializarVariaveis() {
         //Criando objetos
         fd = FeatureDetector.create(FeatureDetector.ORB);
         extractor = DescriptorExtractor.create(DescriptorExtractor.ORB);
         matcher = DescriptorMatcher.create(DescriptorMatcher.BRUTEFORCE_HAMMING);
+//        clahe = Imgproc.createCLAHE();
 
+        //Como o objeto não muda em tempo de execução, suas características serão processadas aqui.
         img_object = new Mat();
         descriptors_object = new Mat();
         keypoints_object = new MatOfKeyPoint();
@@ -167,7 +184,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         //Computando descriptor
         extractor.compute(img_object, keypoints_object, descriptors_object);
 
-        //Criando a thread de calculos
+        //Criando a thread de cálculos
         t = new Thread(new Worker());
 
         //Informando que a inicialização terminou
@@ -175,7 +192,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         Log.d("Inicialização", "Finalizado. Estado = rodando");
     }
 
-    void ShowCamera() {
+    void ExibirCamera() {
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
         mOpenCvCameraView.setCvCameraViewListener(this);
     }
@@ -190,7 +207,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     // permission was granted, yay! Do the
                     // camera-related task you need to do.
-                    ShowCamera();
+                    ExibirCamera();
                 } else {
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
@@ -219,12 +236,6 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
             mOpenCvCameraView.disableView();
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        InitializeOpenCV();
-    }
-
     public void onDestroy() {
         super.onDestroy();
         if (mOpenCvCameraView != null)
@@ -239,36 +250,49 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         mRgba.release();
     }
 
+    /**
+     * Chamado a cada vez que um frame é recebido da câmera.
+     *
+     * @param inputFrame Frame recebido da câmera
+     * @return Imagem que será exibida na tela
+     */
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
         switch (state) {
             case Running:
                 switch (t.getState()) {
                     case TERMINATED:
+                        //Caso o processamento tenha acabado, a Thread é recriada
                         setmRgba(inputFrame.rgba());
                         t = new Thread(new Worker());
                         break;
                     case NEW:
+                        //Atribuindo o frame em mRgba para que a outra Thread leia.
                         setmRgba(inputFrame.rgba());
                         t.start();
                         break;
                 }
                 break;
+            //Outros casos virão aqui
         }
+        //O frame só é exibido para o usuário ao retornar esta função.
         return inputFrame.rgba(); // This function must return
     }
 
     class Worker implements Runnable {
         public void run() {
             Mat img_scene = getmRgba().clone();
-            MatOfDMatch matches = new MatOfDMatch(), gm = new MatOfDMatch();
-            LinkedList<DMatch> good_matches = new LinkedList<DMatch>();
-            LinkedList<Point> objList = new LinkedList<Point>(), sceneList = new LinkedList<Point>();
             MatOfKeyPoint keypoints_scene = new MatOfKeyPoint();
             Mat descriptors_scene = new Mat();
+            MatOfDMatch matches = new MatOfDMatch(), gm = new MatOfDMatch();
+            LinkedList<DMatch> good_matches = new LinkedList<>();
+            List<DMatch> matchesList;
+            LinkedList<Point> objList = new LinkedList<>(), sceneList = new LinkedList<>();
             MatOfPoint2f obj = new MatOfPoint2f(), scene = new MatOfPoint2f();
 
             //Passo 1: Pré-processamento
             Imgproc.cvtColor(img_scene, img_scene, Imgproc.COLOR_BGR2GRAY);
+//            Imgproc.equalizeHist(img_scene, img_scene);
+//            clahe.apply(img_scene, img_scene);
             Imgproc.GaussianBlur(img_scene, img_scene, gaussianBlurSize, 0);
 //            Imgproc.adaptiveThreshold(img_scene, img_scene, 255, 1, 1, 11, 2);
 
@@ -287,7 +311,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 matcher.match(descriptors_scene, descriptors_object, matches);
             }
 
-            List<DMatch> matchesList = matches.toList();
+            matchesList = matches.toList();
 
             //– Quick calculation of max and min distances between keypoints
             for (int i = 0; i < descriptors_object.rows(); i++) {
@@ -327,21 +351,43 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
             scene.fromList(sceneList);
 
             if (objList.size() >= 4 && sceneList.size() >= 4) {
-                Mat H = Calib3d.findHomography(obj, scene);
+                //Homografia para desenhar os contornos do objeto na cena. Apenas para debug.
+                Mat hg = Calib3d.findHomography(obj, scene, Calib3d.RANSAC, 0.5);
 
+                Mat obj_corners = new Mat(4, 1, CvType.CV_32FC2);
+                Mat scene_corners = new Mat(4, 1, CvType.CV_32FC2);
+
+                obj_corners.put(0, 0, 0, 0);
+                obj_corners.put(1, 0, img_object.cols(), 0);
+                obj_corners.put(2, 0, img_object.cols(), img_object.rows());
+                obj_corners.put(3, 0, 0, img_object.rows());
+
+                Core.perspectiveTransform(obj_corners, scene_corners, hg);
+
+                Imgproc.cvtColor(img_scene, img_scene, Imgproc.COLOR_GRAY2BGR);
+                Imgproc.line(img_scene, new Point(scene_corners.get(0, 0)), new Point(scene_corners.get(1, 0)), new Scalar(0, 255, 0), 4);
+                Imgproc.line(img_scene, new Point(scene_corners.get(1, 0)), new Point(scene_corners.get(2, 0)), new Scalar(0, 255, 0), 4);
+                Imgproc.line(img_scene, new Point(scene_corners.get(2, 0)), new Point(scene_corners.get(3, 0)), new Scalar(0, 255, 0), 4);
+                Imgproc.line(img_scene, new Point(scene_corners.get(3, 0)), new Point(scene_corners.get(0, 0)), new Scalar(0, 255, 0), 4);
+
+                /*
                 Mat warpimg = img_object.clone();
-//            org.opencv.core.Size ims = new org.opencv.core.Size(img_object.cols(), img_object.rows());
-//            Imgproc.warpPerspective(img_object, warpimg, H, ims);
+                org.opencv.core.Size ims = new org.opencv.core.Size(img_object.cols(), img_object.rows());
+                Imgproc.warpPerspective(img_object, warpimg, H, ims);
+                */
 
-                //Este bloco é apenas para debug. Comente para melhorar a performance.
-                Bitmap bmp = Bitmap.createBitmap(warpimg.cols(), warpimg.rows(), Bitmap.Config.ARGB_8888);
-                Utils.matToBitmap(warpimg, bmp);
+                ////Este bloco é apenas para debug. Comente para melhorar a performance.
+                Bitmap scene_bmp = Bitmap.createBitmap(img_scene.cols(), img_scene.rows(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(img_scene, scene_bmp);
                 Log.d("WarpingPerspective", "Objeto encontrado");
+                //TODO: Usar homografia e Warp para ajustar a posição do objeto (prova).
+                //TODO: Mudar estado para ObjectFound e ler as respostas na prova.
             }
         }
     }
 
     synchronized Mat getmRgba() {
+        //Setter e getter de mRgba são sincronizados para evitar conflito entre as threads.
         return mRgba;
     }
 
