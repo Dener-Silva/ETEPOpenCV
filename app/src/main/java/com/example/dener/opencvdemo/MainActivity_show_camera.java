@@ -255,9 +255,10 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
      * @return Imagem que será exibida na tela
      */
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
+        Mat frame = inputFrame.rgba();
         switch (state) {
             case Running:
-                setmRgba(inputFrame.rgba());
+                setmRgba(frame);
                 switch (t.getState()) {
                     case TERMINATED:
                         //Caso o processamento tenha acabado, a Thread é recriada
@@ -272,7 +273,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
             //Outros casos virão aqui
         }
         //O frame só é exibido para o usuário ao retornar esta função.
-        return inputFrame.rgba(); // This function must return
+        return frame; // This function must return
     }
 
     class Worker implements Runnable {
