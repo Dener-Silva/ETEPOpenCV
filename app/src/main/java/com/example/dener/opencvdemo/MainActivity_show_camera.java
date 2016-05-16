@@ -10,12 +10,12 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.MenuItem;
 import android.view.SurfaceView;
 import android.view.WindowManager;
 
@@ -31,7 +31,6 @@ import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.DMatch;
-import org.opencv.core.KeyPoint;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDMatch;
 import org.opencv.core.MatOfKeyPoint;
@@ -45,6 +44,7 @@ import org.opencv.features2d.FeatureDetector;
 import org.opencv.features2d.Features2d;
 import org.opencv.imgproc.Imgproc;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -57,10 +57,6 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 
     // Loads camera view of OpenCV for us to use. This lets us see using OpenCV
     private CameraBridgeViewBase mOpenCvCameraView;
-
-    // Used in Camera selection from menu (when implemented)
-    private boolean mIsJavaCamera = true;
-    private MenuItem mItemSwitchCamera = null;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -86,6 +82,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
     private Thread t;
     //Estado atual (não tem muita função por enquanto)
     private State state = State.Initializing;
+    private State lastState = State.Initializing;
 
     /**
      * Armazena o frame atual para que a thread de processamento o leia.
@@ -99,9 +96,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
     private FeatureDetector fd;
     private DescriptorExtractor extractor;
     private DescriptorMatcher matcher;
-    //    private CLAHE clahe;
-    private double max_dist = 0, min_dist = 100;
-    Bitmap matchesBmp;
+//    private CLAHE clahe;
 
     public MainActivity_show_camera() {
         Log.i(TAG, "Instantiated new " + this.getClass());
@@ -133,6 +128,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
     @Override
     public void onResume() {
         super.onResume();
+        setState(lastState);
         IniciarOpenCV();
     }
 
@@ -156,6 +152,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         extractor = DescriptorExtractor.create(DescriptorExtractor.ORB);
         matcher = DescriptorMatcher.create(DescriptorMatcher.BRUTEFORCE_HAMMING);
 //        clahe = Imgproc.createCLAHE();
+//        clahe.setTilesGridSize(new Size(100, 100));
 
         //Como o objeto não muda em tempo de execução, suas características serão processadas aqui.
         img_object = new Mat();
@@ -163,7 +160,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         keypoints_object = new MatOfKeyPoint();
 
         //Lendo arquivo PNG
-        Drawable drawable = ResourcesCompat.getDrawable(getResources(), R.drawable.gabarito_kp3, null);
+        Drawable drawable = ResourcesCompat.getDrawable(getResources(), R.drawable.gabarito_keypoints, null);
 
         if (drawable != null) {
             Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
@@ -175,7 +172,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         //Pré-processando a imagem
         Imgproc.cvtColor(img_object, img_object, Imgproc.COLOR_BGR2GRAY);
 //        Imgproc.GaussianBlur(img_object, img_object, gaussianBlurSize, 0);
-//        Imgproc.adaptiveThreshold(img_object, img_object, 255, 1, 1, 11, 2);
+        Imgproc.adaptiveThreshold(img_object, img_object, 255, 1, 1, 11, 2);
 //        Utils.matToBitmap(img_object, bitmap);//Esta linha seria usada para debug
 
         //Calculando KeyPoints
@@ -188,7 +185,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         t = new Thread(new Worker());
 
         //Informando que a inicialização terminou
-        state = State.Running;
+        setState(State.Running);
         Log.d("Inicialização", "Finalizado. Estado = rodando");
     }
 
@@ -199,7 +196,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
+                                           @NonNull String permissions[], @NonNull int[] grantResults) {
         switch (requestCode) {
             case MY_PERMISSIONS_REQUEST_CAMERA: {
                 // If request is cancelled, the result arrays are empty.
@@ -222,7 +219,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                     });
                     ad.show();
                 }
-                return;
+//                return;
             }
             // other 'case' lines to check for other
             // permissions this app might request
@@ -231,6 +228,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 
     @Override
     public void onPause() {
+        setState(State.Paused);
         super.onPause();
         if (mOpenCvCameraView != null)
             mOpenCvCameraView.disableView();
@@ -259,15 +257,14 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
         switch (state) {
             case Running:
+                setmRgba(inputFrame.rgba());
                 switch (t.getState()) {
                     case TERMINATED:
                         //Caso o processamento tenha acabado, a Thread é recriada
-                        setmRgba(inputFrame.rgba());
                         t = new Thread(new Worker());
                         break;
                     case NEW:
                         //Atribuindo o frame em mRgba para que a outra Thread leia.
-                        setmRgba(inputFrame.rgba());
                         t.start();
                         break;
                 }
@@ -280,79 +277,72 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 
     class Worker implements Runnable {
         public void run() {
-            Mat img_scene = getmRgba().clone();
-            MatOfKeyPoint keypoints_scene = new MatOfKeyPoint();
-            Mat descriptors_scene = new Mat();
-            MatOfDMatch matches = new MatOfDMatch(), gm = new MatOfDMatch();
-            LinkedList<DMatch> good_matches = new LinkedList<>();
-            List<DMatch> matchesList;
-            LinkedList<Point> objList = new LinkedList<>(), sceneList = new LinkedList<>();
-            MatOfPoint2f obj = new MatOfPoint2f(), scene = new MatOfPoint2f();
+            while (state == State.Running) {
+                Mat img_scene = getmRgba().clone();
+                MatOfKeyPoint keypoints_scene = new MatOfKeyPoint();
+                Mat descriptors_scene = new Mat();
 
-            //Passo 1: Pré-processamento
-            Imgproc.cvtColor(img_scene, img_scene, Imgproc.COLOR_BGR2GRAY);
+                //Passo 1: Pré-processamento
+                Imgproc.cvtColor(img_scene, img_scene, Imgproc.COLOR_BGR2GRAY);
 //            Imgproc.equalizeHist(img_scene, img_scene);
 //            clahe.apply(img_scene, img_scene);
-            Imgproc.GaussianBlur(img_scene, img_scene, gaussianBlurSize, 0);
-//            Imgproc.adaptiveThreshold(img_scene, img_scene, 255, 1, 1, 11, 2);
+                Imgproc.GaussianBlur(img_scene, img_scene, gaussianBlurSize, 0);
+                Imgproc.adaptiveThreshold(img_scene, img_scene, 255, 1, 1, 11, 2);
 
-            //Detectando KeyPoints
-            fd.detect(img_scene, keypoints_scene);
-            //Caso a imagem seja totalmente preta, keypoints_scene não terá nada dentro. Para evitar um
-            //IndexOutOfBoundsException, a função acaba aqui.
-            if (!keypoints_scene.size().equals(keypoints_object.size())) {
-                return;
-            }
+                //Detectando KeyPoints
+                fd.detect(img_scene, keypoints_scene);
 
-            //– Step 2: Calculate descriptors (feature vectors)
-            extractor.compute(img_scene, keypoints_scene, descriptors_scene);
-            if ((descriptors_object.type() == descriptors_scene.type() &&
-                    descriptors_object.cols() == descriptors_scene.cols())) {
-                matcher.match(descriptors_scene, descriptors_object, matches);
-            }
-
-            matchesList = matches.toList();
-
-            //– Quick calculation of max and min distances between keypoints
-            for (int i = 0; i < descriptors_object.rows(); i++) {
-                Double dist = (double) matchesList.get(i).distance;
-                if (dist < min_dist) min_dist = dist;
-                if (dist > max_dist) max_dist = dist;
-            }
-
-            for (int i = 0; i < descriptors_object.rows(); i++) {
-                if (matchesList.get(i).distance < 3 * min_dist) {
-                    good_matches.addLast(matchesList.get(i));
+                //Caso a imagem seja totalmente preta, keypoints_scene não terá nada dentro.
+                // Para evitar um IndexOutOfBoundsException, a função acaba aqui.
+                if (keypoints_scene.size().equals(new Size(1, 0)) || keypoints_object.size().equals(new Size(1, 0))) {
+                    return;
                 }
-            }
 
-            gm.fromList(good_matches);
+                //– Step 2: Calculate descriptors (feature vectors)
+                extractor.compute(img_scene, keypoints_scene, descriptors_scene);
+                List<MatOfDMatch> matches = new LinkedList<>();
+                if ((descriptors_object.type() == descriptors_scene.type() &&
+                        descriptors_object.cols() == descriptors_scene.cols())) {
+                    matcher.knnMatch(descriptors_scene, descriptors_object, matches, 5);
+                }
 
-            ////Este bloco é apenas para debug. Comente para melhorar a performance.
-            if (keypoints_scene.size().equals(keypoints_object.size())) {
-                Mat rgb = new Mat();
-                Mat matchesMat = new Mat();
-                Imgproc.cvtColor(mRgba, rgb, Imgproc.COLOR_BGR2RGB);
-                Features2d.drawMatches(img_scene, keypoints_scene, img_object, keypoints_object, gm, matchesMat);
-                matchesBmp = Bitmap.createBitmap(matchesMat.cols(), matchesMat.rows(), Bitmap.Config.ARGB_8888);
-                Utils.matToBitmap(matchesMat, matchesBmp);
-                Log.d("Teste", "equal");
-            }
+                // ratio test
+                LinkedList<DMatch> good_matches = new LinkedList<>();
+                for (MatOfDMatch matOfDMatch : matches) {
+                    if (matOfDMatch.toArray()[0].distance / matOfDMatch.toArray()[1].distance < 0.9) {
+                        good_matches.add(matOfDMatch.toArray()[0]);
+                    }
+                }
 
-            List<KeyPoint> keypoints_objectList = keypoints_object.toList();
-            List<KeyPoint> keypoints_sceneList = keypoints_scene.toList();
+                // get keypoint coordinates of good matches to find homography and remove outliers using ransac
+                List<Point> pts1 = new ArrayList<>();
+                List<Point> pts2 = new ArrayList<>();
+                for (int i = 0; i < good_matches.size(); i++) {
+                    pts1.add(keypoints_scene.toList().get(good_matches.get(i).queryIdx).pt);
+                    pts2.add(keypoints_object.toList().get(good_matches.get(i).trainIdx).pt);
+                }
 
-            for (int i = 0; i < good_matches.size(); i++) {
-                objList.addLast(keypoints_objectList.get(good_matches.get(i).queryIdx).pt);
-                sceneList.addLast(keypoints_sceneList.get(good_matches.get(i).trainIdx).pt);
-            }
-            obj.fromList(objList);
+                // convertion of data types - there is maybe a more beautiful way
+                Mat outputMask = new Mat();
+                MatOfPoint2f pts1Mat = new MatOfPoint2f();
+                pts1Mat.fromList(pts1);
+                MatOfPoint2f pts2Mat = new MatOfPoint2f();
+                pts2Mat.fromList(pts2);
 
-            scene.fromList(sceneList);
 
-            if (objList.size() >= 4 && sceneList.size() >= 4) {
-                //Homografia para desenhar os contornos do objeto na cena. Apenas para debug.
-                Mat hg = Calib3d.findHomography(obj, scene, Calib3d.RANSAC, 0.5);
+                // Find homography - here just used to perform match filtering with RANSAC, but could be used to e.g. stitch images
+                // the smaller the allowed reprojection error (here 15), the more matches are filtered
+                Mat homog = Calib3d.findHomography(pts2Mat, pts1Mat, Calib3d.RANSAC, 15, outputMask, 2000, 0.995);
+
+                // outputMask contains zeros and ones indicating which matches are filtered
+                LinkedList<DMatch> better_matches = new LinkedList<>();
+                for (int i = 0; i < good_matches.size(); i++) {
+                    if (outputMask.get(i, 0) == null)
+                        return;
+                    if (outputMask.get(i, 0)[0] != 0.0) {
+                        better_matches.add(good_matches.get(i));
+                    }
+                }
 
                 Mat obj_corners = new Mat(4, 1, CvType.CV_32FC2);
                 Mat scene_corners = new Mat(4, 1, CvType.CV_32FC2);
@@ -362,7 +352,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 obj_corners.put(2, 0, img_object.cols(), img_object.rows());
                 obj_corners.put(3, 0, 0, img_object.rows());
 
-                Core.perspectiveTransform(obj_corners, scene_corners, hg);
+                Core.perspectiveTransform(obj_corners, scene_corners, homog);
 
                 Imgproc.cvtColor(img_scene, img_scene, Imgproc.COLOR_GRAY2BGR);
                 Imgproc.line(img_scene, new Point(scene_corners.get(0, 0)), new Point(scene_corners.get(1, 0)), new Scalar(0, 255, 0), 4);
@@ -379,7 +369,17 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 ////Este bloco é apenas para debug. Comente para melhorar a performance.
                 Bitmap scene_bmp = Bitmap.createBitmap(img_scene.cols(), img_scene.rows(), Bitmap.Config.ARGB_8888);
                 Utils.matToBitmap(img_scene, scene_bmp);
+
+                // DRAWING OUTPUT
+                Mat outputImg = new Mat();
+                // this will draw all matches, works fine
+                MatOfDMatch better_matches_mat = new MatOfDMatch();
+                better_matches_mat.fromList(better_matches);
+                Features2d.drawMatches(img_scene, keypoints_scene, img_object, keypoints_object, better_matches_mat, outputImg);
+                Bitmap matches_bmp = Bitmap.createBitmap(outputImg.cols(), outputImg.rows(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(outputImg, matches_bmp);
                 Log.d("WarpingPerspective", "Objeto encontrado");
+
                 //TODO: Usar homografia e Warp para ajustar a posição do objeto (prova).
                 //TODO: Mudar estado para ObjectFound e ler as respostas na prova.
             }
@@ -397,5 +397,10 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 
     public Context getContext() {
         return this;
+    }
+
+    void setState(State state) {
+        this.lastState = this.state;
+        this.state = state;
     }
 }

@@ -6,6 +6,7 @@ package com.example.dener.opencvdemo;
 public enum State {
     Initializing,
     Running,
+    Paused,
     ObjectFound,
     Completed
 }
