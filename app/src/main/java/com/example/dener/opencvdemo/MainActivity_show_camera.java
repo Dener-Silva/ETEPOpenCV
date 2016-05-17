@@ -279,20 +279,20 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         }
 
         ////Este bloco é apenas para debug. Comente para melhorar a performance.
-        Mat Hframe = frame.clone();
+        Mat HFrame = frame.clone();
         Point[] HPoints = getHPoints();
         for (int i = 0; i < 4; i++) {
             if (HPoints[i] == null) {
                 return frame;
             }
         }
-        Imgproc.line(frame, HPoints[0], HPoints[1], new Scalar(0, 255, 0), 4);
-        Imgproc.line(frame, HPoints[1], HPoints[2], new Scalar(0, 255, 0), 4);
-        Imgproc.line(frame, HPoints[2], HPoints[3], new Scalar(0, 255, 0), 4);
-        Imgproc.line(frame, HPoints[3], HPoints[0], new Scalar(0, 255, 0), 4);
+        Imgproc.line(HFrame, HPoints[0], HPoints[1], new Scalar(0, 255, 0), 4);
+        Imgproc.line(HFrame, HPoints[1], HPoints[2], new Scalar(0, 255, 0), 4);
+        Imgproc.line(HFrame, HPoints[2], HPoints[3], new Scalar(0, 255, 0), 4);
+        Imgproc.line(HFrame, HPoints[3], HPoints[0], new Scalar(0, 255, 0), 4);
 
         //O frame só é exibido para o usuário ao retornar esta função.
-        return frame; // This function must return
+        return HFrame; // This function must return
     }
 
     class Worker implements Runnable {
