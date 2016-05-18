@@ -94,6 +94,9 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
      */
     private Point[] HPoints = new Point[4];
 
+    //Variável para medir o tempo de inicialização
+    Stopwatch initStopwatch = new Stopwatch();
+
     private Mat descriptors_object;
     private Mat img_object;
     private MatOfKeyPoint keypoints_object;
@@ -110,6 +113,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        initStopwatch.start();
         Log.i(TAG, "called onCreate");
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -190,7 +194,6 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         t = new Thread(new Worker());
 
         //Informando que a inicialização terminou
-        setState(State.Running);
         Log.d("Inicialização", "Finalizado. Estado = rodando");
     }
 
@@ -275,6 +278,11 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                         break;
                 }
                 break;
+            case Initializing:
+                setState(State.Running);
+                Log.d("onCameraFrame", "Tempo decorrido de onCreate até receber o primeiro frame:" +
+                        initStopwatch.getElapsedTime() + "ms");
+                break;
             //Outros casos virão aqui
         }
 
@@ -296,12 +304,20 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
     }
 
     class Worker implements Runnable {
+        Stopwatch workerStopwatch = new Stopwatch();
         public void run() {
             outerLoop:
             while (state == State.Running) {
                 Mat img_scene = getmRgba().clone();
                 MatOfKeyPoint keypoints_scene = new MatOfKeyPoint();
                 Mat descriptors_scene = new Mat();
+                Log.d("Homografia", "Imagem processada em " + workerStopwatch.getElapsedTime() + "ms");
+//                try {
+//                    Thread.sleep(Math.max(1000 - (int) workerStopwatch.getElapsedTime(), 0));
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+                workerStopwatch.start();
 
                 //Passo 1: Pré-processamento
                 Imgproc.cvtColor(img_scene, img_scene, Imgproc.COLOR_BGR2GRAY);
