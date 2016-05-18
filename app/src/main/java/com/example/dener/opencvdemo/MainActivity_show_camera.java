@@ -354,6 +354,9 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 MatOfPoint2f pts2Mat = new MatOfPoint2f();
                 pts2Mat.fromList(pts2);
 
+                //Pelo menos 4 pontos em cada Mat são necessários para a homografia.
+                if (pts1Mat.total() < 4 || pts2Mat.total() < 4)
+                    continue;
 
                 // Find homography - here just used to perform match filtering with RANSAC, but could be used to e.g. stitch images
                 // the smaller the allowed reprojection error (here 15), the more matches are filtered
