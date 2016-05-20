@@ -1,7 +1,8 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:opencv="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@android:color/background_dark">
 
     <org.opencv.android.JavaCameraView
         android:layout_width="match_parent"
@@ -11,5 +12,15 @@
         opencv:show_fps="true"
         opencv:camera_id="any"
         android:layout_gravity="center" />
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/viewfinder"
+        android:contentDescription="@string/view_finder"
+        android:background="@drawable/viewfinder"
+        android:alpha=".5"
+        android:layout_gravity="center"
+        android:visibility="gone" />
 
 </FrameLayout>
