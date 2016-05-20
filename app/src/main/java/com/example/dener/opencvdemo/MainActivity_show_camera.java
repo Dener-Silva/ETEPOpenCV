@@ -41,6 +41,7 @@ import org.opencv.core.Size;
 import org.opencv.features2d.DescriptorExtractor;
 import org.opencv.features2d.DescriptorMatcher;
 import org.opencv.features2d.FeatureDetector;
+import org.opencv.features2d.Features2d;
 import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
@@ -106,6 +107,11 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
     private DescriptorMatcher matcher;
 //    private CLAHE clahe;
 
+    /**
+     * Mude para true para exibir as linhas na tela, entre outras funções de teste.
+     */
+    private boolean debug = false;
+
     public MainActivity_show_camera() {
         Log.i(TAG, "Instantiated new " + this.getClass());
     }
@@ -169,11 +175,14 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         keypoints_object = new MatOfKeyPoint();
 
         //Lendo arquivo PNG
-        Drawable drawable = ResourcesCompat.getDrawable(getResources(), R.drawable.gabarito_keypoints, null);
+        Drawable drawable = ResourcesCompat.getDrawable(getResources(), R.drawable.gabarito_kp10, null);
 
         if (drawable != null) {
             Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
             Utils.bitmapToMat(bitmap, img_object);
+            if (debug) {
+                Utils.matToBitmap(img_object, bitmap);//Esta linha seria usada para debug
+            }
         } else {
             Log.e("Inicialização", "Imagem não encontrada");
         }
@@ -182,7 +191,6 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         Imgproc.cvtColor(img_object, img_object, Imgproc.COLOR_BGR2GRAY);
 //        Imgproc.GaussianBlur(img_object, img_object, gaussianBlurSize, 0);
 //        Imgproc.adaptiveThreshold(img_object, img_object, 255, 1, 1, 11, 2);
-//        Utils.matToBitmap(img_object, bitmap);//Esta linha seria usada para debug
 
         //Calculando KeyPoints
         fd.detect(img_object, keypoints_object);
@@ -286,25 +294,30 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
             //Outros casos virão aqui
         }
 
-        ////Este bloco é apenas para debug. Comente para melhorar a performance.
-        Mat HFrame = frame.clone();
-        Point[] HPoints = getHPoints();
-        for (int i = 0; i < 4; i++) {
-            if (HPoints[i] == null) {
-                return frame;
+        //<editor-fold desc="Apenas para debug.">
+        if (debug) {
+            Mat HFrame = frame.clone();
+            Point[] HPoints = getHPoints();
+            for (int i = 0; i < 4; i++) {
+                if (HPoints[i] == null) {
+                    return frame;
+                }
             }
+            Imgproc.line(HFrame, HPoints[0], HPoints[1], new Scalar(0, 255, 0), 4);
+            Imgproc.line(HFrame, HPoints[1], HPoints[2], new Scalar(0, 255, 0), 4);
+            Imgproc.line(HFrame, HPoints[2], HPoints[3], new Scalar(0, 255, 0), 4);
+            Imgproc.line(HFrame, HPoints[3], HPoints[0], new Scalar(0, 255, 0), 4);
+            return HFrame;
         }
-        Imgproc.line(HFrame, HPoints[0], HPoints[1], new Scalar(0, 255, 0), 4);
-        Imgproc.line(HFrame, HPoints[1], HPoints[2], new Scalar(0, 255, 0), 4);
-        Imgproc.line(HFrame, HPoints[2], HPoints[3], new Scalar(0, 255, 0), 4);
-        Imgproc.line(HFrame, HPoints[3], HPoints[0], new Scalar(0, 255, 0), 4);
+        //</editor-fold>
 
         //O frame só é exibido para o usuário ao retornar esta função.
-        return HFrame; // This function must return
+        return frame; // This function must return
     }
 
     class Worker implements Runnable {
         Stopwatch workerStopwatch = new Stopwatch();
+
         public void run() {
             outerLoop:
             while (state == State.Running) {
@@ -338,14 +351,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 //– Step 2: Calculate descriptors (feature vectors)
                 extractor.compute(img_scene, keypoints_scene, descriptors_scene);
                 List<MatOfDMatch> matches = new LinkedList<>();
-                if ((descriptors_object.type() == descriptors_scene.type() &&
-                        descriptors_object.cols() == descriptors_scene.cols())) {
-                    matcher.knnMatch(descriptors_scene, descriptors_object, matches, 5);
-                }
-
-//                ////Este bloco é apenas para debug. Comente para melhorar a performance.
-//                Bitmap scene_bmp = Bitmap.createBitmap(img_scene.cols(), img_scene.rows(), Bitmap.Config.ARGB_8888);
-//                Utils.matToBitmap(img_scene, scene_bmp);
+                matcher.knnMatch(descriptors_scene, descriptors_object, matches, 5);
 
                 // ratio test
                 LinkedList<DMatch> good_matches = new LinkedList<>();
@@ -374,61 +380,68 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 if (pts1Mat.total() < 4 || pts2Mat.total() < 4)
                     continue;
 
+                //<editor-fold desc="Apenas para debug.">
+                if (debug) {
+                    // Find homography - here just used to perform match filtering with RANSAC, but could be used to e.g. stitch images
+                    // the smaller the allowed reprojection error (here 15), the more matches are filtered
+                    Mat homog = Calib3d.findHomography(pts2Mat, pts1Mat, Calib3d.RANSAC, 15, outputMask, 2000, 0.995);
+
+                    // outputMask contains zeros and ones indicating which matches are filtered
+                    LinkedList<DMatch> better_matches = new LinkedList<>();
+                    for (int i = 0; i < good_matches.size(); i++) {
+                        if (outputMask.get(i, 0) == null)
+                            continue outerLoop;
+                        if (outputMask.get(i, 0)[0] != 0.0) {
+                            better_matches.add(good_matches.get(i));
+                        }
+                    }
+                    Bitmap scene_bmp = Bitmap.createBitmap(img_scene.cols(), img_scene.rows(), Bitmap.Config.ARGB_8888);
+                    Utils.matToBitmap(img_scene, scene_bmp);
+
+                    Mat obj_corners = new Mat(4, 1, CvType.CV_32FC2);
+                    Mat scene_corners = new Mat(4, 1, CvType.CV_32FC2);
+
+                    obj_corners.put(0, 0, 0, 0);
+                    obj_corners.put(1, 0, img_object.cols(), 0);
+                    obj_corners.put(2, 0, img_object.cols(), img_object.rows());
+                    obj_corners.put(3, 0, 0, img_object.rows());
+
+                    Core.perspectiveTransform(obj_corners, scene_corners, homog);
+
+                    Point[] HPoints = new Point[4];
+                    for (int i = 0; i < 4; i++) {
+                        HPoints[i] = new Point(scene_corners.get(i, 0));
+                    }
+
+                    setHPoints(HPoints);
+
+                    // DRAWING OUTPUT
+                    Mat outputImg = new Mat();
+                    // this will draw all matches, works fine
+                    MatOfDMatch better_matches_mat = new MatOfDMatch();
+                    better_matches_mat.fromList(better_matches);
+                    Features2d.drawMatches(img_scene, keypoints_scene, img_object, keypoints_object, better_matches_mat, outputImg);
+                    Bitmap matches_bmp = Bitmap.createBitmap(outputImg.cols(), outputImg.rows(), Bitmap.Config.ARGB_8888);
+                    Utils.matToBitmap(outputImg, matches_bmp);
+                }
+                //</editor-fold>
+
                 // Find homography - here just used to perform match filtering with RANSAC, but could be used to e.g. stitch images
                 // the smaller the allowed reprojection error (here 15), the more matches are filtered
-                Mat homog = Calib3d.findHomography(pts2Mat, pts1Mat, Calib3d.RANSAC, 15, outputMask, 2000, 0.995);
+                Mat revHomog = Calib3d.findHomography(pts1Mat, pts2Mat, Calib3d.RANSAC, 15, outputMask, 2000, 0.995);
+                Mat imgOut = new Mat(img_object.size(), CvType.CV_8UC4);
+                Imgproc.warpPerspective(img_scene, imgOut, revHomog, imgOut.size());
 
-                // outputMask contains zeros and ones indicating which matches are filtered
-                LinkedList<DMatch> better_matches = new LinkedList<>();
-                for (int i = 0; i < good_matches.size(); i++) {
-                    if (outputMask.get(i, 0) == null)
-                        continue outerLoop;
-                    if (outputMask.get(i, 0)[0] != 0.0) {
-                        better_matches.add(good_matches.get(i));
-                    }
+                // binariza imagem usando um threshold adaptativo
+                Imgproc.adaptiveThreshold(imgOut, imgOut, 255,
+                        Imgproc.ADAPTIVE_THRESH_MEAN_C,
+                        Imgproc.THRESH_BINARY, 61, 15);
+
+                if (debug) {
+                    Bitmap warp = Bitmap.createBitmap(imgOut.cols(), imgOut.rows(), Bitmap.Config.ARGB_8888);
+                    Utils.matToBitmap(imgOut, warp);
+                    Log.d("WarpingPerspective", "Objeto encontrado");
                 }
-
-                Mat obj_corners = new Mat(4, 1, CvType.CV_32FC2);
-                Mat scene_corners = new Mat(4, 1, CvType.CV_32FC2);
-
-                obj_corners.put(0, 0, 0, 0);
-                obj_corners.put(1, 0, img_object.cols(), 0);
-                obj_corners.put(2, 0, img_object.cols(), img_object.rows());
-                obj_corners.put(3, 0, 0, img_object.rows());
-
-                Core.perspectiveTransform(obj_corners, scene_corners, homog);
-
-                Point[] HPoints = new Point[4];
-                for (int i = 0; i < 4; i++) {
-                    HPoints[i] = new Point(scene_corners.get(i, 0));
-                }
-//                ////Este bloco é apenas para debug. Comente para melhorar a performance.
-//                Imgproc.cvtColor(img_scene, img_scene, Imgproc.COLOR_GRAY2BGR);
-//                Imgproc.line(img_scene, HPoints[0], HPoints[1], new Scalar(0, 255, 0), 4);
-//                Imgproc.line(img_scene, HPoints[1], HPoints[2], new Scalar(0, 255, 0), 4);
-//                Imgproc.line(img_scene, HPoints[2], HPoints[3], new Scalar(0, 255, 0), 4);
-//                Imgproc.line(img_scene, HPoints[3], HPoints[0], new Scalar(0, 255, 0), 4);
-
-                setHPoints(HPoints);
-
-                /*
-                Mat warpimg = img_object.clone();
-                org.opencv.core.Size ims = new org.opencv.core.Size(img_object.cols(), img_object.rows());
-                Imgproc.warpPerspective(img_object, warpimg, H, ims);
-                */
-
-//                ////Este bloco é apenas para debug. Comente para melhorar a performance.
-//                // DRAWING OUTPUT
-//                Mat outputImg = new Mat();
-//                // this will draw all matches, works fine
-//                MatOfDMatch better_matches_mat = new MatOfDMatch();
-//                better_matches_mat.fromList(better_matches);
-//                Features2d.drawMatches(img_scene, keypoints_scene, img_object, keypoints_object, better_matches_mat, outputImg);
-//                Bitmap matches_bmp = Bitmap.createBitmap(outputImg.cols(), outputImg.rows(), Bitmap.Config.ARGB_8888);
-//                Utils.matToBitmap(outputImg, matches_bmp);
-//                Log.d("WarpingPerspective", "Objeto encontrado");
-
-                //TODO: Usar homografia e Warp para ajustar a posição do objeto (prova).
                 //TODO: Mudar estado para ObjectFound e ler as respostas na prova.
             }
         }
