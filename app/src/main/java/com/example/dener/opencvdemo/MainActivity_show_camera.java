@@ -317,6 +317,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 
     class Worker implements Runnable {
         Stopwatch workerStopwatch = new Stopwatch();
+        Size homSize = new Size(3, 3);
 
         public void run() {
             outerLoop:
@@ -430,6 +431,11 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 // the smaller the allowed reprojection error (here 15), the more matches are filtered
                 Mat revHomog = Calib3d.findHomography(pts1Mat, pts2Mat, Calib3d.RANSAC, 15, outputMask, 2000, 0.995);
                 Mat imgOut = new Mat(img_object.size(), CvType.CV_8UC4);
+                //O tamanho da matriz de transformação revHomog deve ser 3*3.
+                // Caso não seja, é sinal de que a homografia falhou.
+                if (revHomog.size() != homSize) {
+                    continue;
+                }
                 Imgproc.warpPerspective(img_scene, imgOut, revHomog, imgOut.size());
 
                 // binariza imagem usando um threshold adaptativo
@@ -438,8 +444,8 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                         Imgproc.THRESH_BINARY, 61, 15);
 
                 if (debug) {
-                    Bitmap warp = Bitmap.createBitmap(imgOut.cols(), imgOut.rows(), Bitmap.Config.ARGB_8888);
-                    Utils.matToBitmap(imgOut, warp);
+                    Bitmap warp_bmp = Bitmap.createBitmap(imgOut.cols(), imgOut.rows(), Bitmap.Config.ARGB_8888);
+                    Utils.matToBitmap(imgOut, warp_bmp);
                     Log.d("WarpingPerspective", "Objeto encontrado");
                 }
                 //TODO: Mudar estado para ObjectFound e ler as respostas na prova.
