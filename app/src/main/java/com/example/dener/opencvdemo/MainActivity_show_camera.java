@@ -288,7 +288,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 break;
             case Initializing:
                 setState(State.Running);
-                Log.d("onCameraFrame", "Tempo decorrido de onCreate até receber o primeiro frame:" +
+                Log.v("onCameraFrame", "Tempo decorrido de onCreate até receber o primeiro frame:" +
                         initStopwatch.getElapsedTime() + "ms");
                 break;
             //Outros casos virão aqui
@@ -317,7 +317,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 
     class Worker implements Runnable {
         Stopwatch workerStopwatch = new Stopwatch();
-        Size homSize = new Size(3, 3);
+        final Size homSize = new Size(3, 3);
 
         public void run() {
             outerLoop:
@@ -325,7 +325,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 Mat img_scene = getmRgba().clone();
                 MatOfKeyPoint keypoints_scene = new MatOfKeyPoint();
                 Mat descriptors_scene = new Mat();
-                Log.d("Homografia", "Imagem processada em " + workerStopwatch.getElapsedTime() + "ms");
+                Log.v("Homografia", "Imagem processada em " + workerStopwatch.getElapsedTime() + "ms");
 //                try {
 //                    Thread.sleep(Math.max(1000 - (int) workerStopwatch.getElapsedTime(), 0));
 //                } catch (InterruptedException e) {
@@ -343,6 +343,8 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 //Detectando KeyPoints
                 fd.detect(img_scene, keypoints_scene);
 
+                Log.v("Homografia", "Detectando KeyPoints: " + workerStopwatch.split() + "ms");
+
                 //Caso a imagem seja totalmente preta, keypoints_scene não terá nada dentro.
                 // Para evitar um IndexOutOfBoundsException, a função acaba aqui.
                 if (keypoints_scene.size().equals(new Size(1, 0)) || keypoints_object.size().equals(new Size(1, 0))) {
@@ -353,6 +355,8 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 extractor.compute(img_scene, keypoints_scene, descriptors_scene);
                 List<MatOfDMatch> matches = new LinkedList<>();
                 matcher.knnMatch(descriptors_scene, descriptors_object, matches, 5);
+
+                Log.v("Homografia", "Calculando descriptors: " + workerStopwatch.split() + "ms");
 
                 // ratio test
                 LinkedList<DMatch> good_matches = new LinkedList<>();
@@ -376,6 +380,8 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 pts1Mat.fromList(pts1);
                 MatOfPoint2f pts2Mat = new MatOfPoint2f();
                 pts2Mat.fromList(pts2);
+
+                Log.v("Homografia", "good_matches: " + workerStopwatch.split() + "ms");
 
                 //Pelo menos 4 pontos em cada Mat são necessários para a homografia.
                 if (pts1Mat.total() < 4 || pts2Mat.total() < 4)
@@ -424,16 +430,18 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                     Features2d.drawMatches(img_scene, keypoints_scene, img_object, keypoints_object, better_matches_mat, outputImg);
                     Bitmap matches_bmp = Bitmap.createBitmap(outputImg.cols(), outputImg.rows(), Bitmap.Config.ARGB_8888);
                     Utils.matToBitmap(outputImg, matches_bmp);
+                    Log.v("Homografia", "Debug: " + workerStopwatch.split() + "ms");
                 }
                 //</editor-fold>
 
                 // Find homography - here just used to perform match filtering with RANSAC, but could be used to e.g. stitch images
                 // the smaller the allowed reprojection error (here 15), the more matches are filtered
                 Mat revHomog = Calib3d.findHomography(pts1Mat, pts2Mat, Calib3d.RANSAC, 15, outputMask, 2000, 0.995);
+                Log.v("Homografia", "Homografia: " + workerStopwatch.split() + "ms");
                 Mat imgOut = new Mat(img_object.size(), CvType.CV_8UC4);
                 //O tamanho da matriz de transformação revHomog deve ser 3*3.
                 // Caso não seja, é sinal de que a homografia falhou.
-                if (revHomog.size() != homSize) {
+                if (!revHomog.size().equals(homSize)) {
                     continue;
                 }
                 Imgproc.warpPerspective(img_scene, imgOut, revHomog, imgOut.size());
@@ -443,10 +451,12 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                         Imgproc.ADAPTIVE_THRESH_MEAN_C,
                         Imgproc.THRESH_BINARY, 61, 15);
 
+                Log.v("Homografia", "Warp Perspective: " + workerStopwatch.split() + "ms");
+
                 if (debug) {
                     Bitmap warp_bmp = Bitmap.createBitmap(imgOut.cols(), imgOut.rows(), Bitmap.Config.ARGB_8888);
                     Utils.matToBitmap(imgOut, warp_bmp);
-                    Log.d("WarpingPerspective", "Objeto encontrado");
+                    Log.v("WarpingPerspective", "Objeto encontrado");
                 }
                 //TODO: Mudar estado para ObjectFound e ler as respostas na prova.
             }
