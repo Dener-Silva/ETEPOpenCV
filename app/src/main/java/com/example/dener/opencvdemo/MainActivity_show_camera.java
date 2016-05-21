@@ -364,8 +364,9 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 // ratio test
                 LinkedList<DMatch> good_matches = new LinkedList<>();
                 for (MatOfDMatch matOfDMatch : matches) {
-                    if (matOfDMatch.toArray()[0].distance / matOfDMatch.toArray()[1].distance < 0.9) {
-                        good_matches.add(matOfDMatch.toArray()[0]);
+                    DMatch[] matOfDMatch_array = matOfDMatch.toArray();
+                    if (matOfDMatch_array[0].distance / matOfDMatch_array[1].distance < 0.9) {
+                        good_matches.add(matOfDMatch_array[0]);
                     }
                 }
 
@@ -385,7 +386,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 MatOfPoint2f pts2Mat = new MatOfPoint2f();
                 pts2Mat.fromList(pts2);
 
-                Log.v("Homografia", "good_matches: " + workerStopwatch.split());
+                Log.v("Homografia", "good_matches: " + workerStopwatch.split() + "ms");
 
                 //Pelo menos 4 pontos em cada Mat são necessários para a homografia.
                 if (pts1Mat.total() < 4 || pts2Mat.total() < 4)
