@@ -31,6 +31,7 @@ import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.DMatch;
+import org.opencv.core.KeyPoint;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDMatch;
 import org.opencv.core.MatOfKeyPoint;
@@ -101,6 +102,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
     private Mat descriptors_object;
     private Mat img_object;
     private MatOfKeyPoint keypoints_object;
+    private List<KeyPoint> keypoints_object_list;
     private Size gaussianBlurSize = new Size(3, 3);
     private FeatureDetector fd;
     private DescriptorExtractor extractor;
@@ -194,6 +196,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 
         //Calculando KeyPoints
         fd.detect(img_object, keypoints_object);
+        keypoints_object_list = keypoints_object.toList();
 
         //Computando descriptor
         extractor.compute(img_object, keypoints_object, descriptors_object);
@@ -369,9 +372,10 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 // get keypoint coordinates of good matches to find homography and remove outliers using ransac
                 List<Point> pts1 = new ArrayList<>();
                 List<Point> pts2 = new ArrayList<>();
+                List<KeyPoint> keypoints_scene_list = keypoints_scene.toList();
                 for (int i = 0; i < good_matches.size(); i++) {
-                    pts1.add(keypoints_scene.toList().get(good_matches.get(i).queryIdx).pt);
-                    pts2.add(keypoints_object.toList().get(good_matches.get(i).trainIdx).pt);
+                    pts1.add(keypoints_scene_list.get(good_matches.get(i).queryIdx).pt);
+                    pts2.add(keypoints_object_list.get(good_matches.get(i).trainIdx).pt);
                 }
 
                 // convertion of data types - there is maybe a more beautiful way
@@ -381,7 +385,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 MatOfPoint2f pts2Mat = new MatOfPoint2f();
                 pts2Mat.fromList(pts2);
 
-                Log.v("Homografia", "good_matches: " + workerStopwatch.split() + "ms");
+                Log.v("Homografia", "good_matches: " + workerStopwatch.split());
 
                 //Pelo menos 4 pontos em cada Mat são necessários para a homografia.
                 if (pts1Mat.total() < 4 || pts2Mat.total() < 4)
