@@ -110,9 +110,13 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 //    private CLAHE clahe;
 
     /**
-     * Mude para true para exibir as linhas na tela, entre outras funções de teste.
+     * Mude para true para funções de teste.
      */
-    private boolean debug = false;
+    private boolean debug = true;
+    /**
+     * Mude para true para mostrar o contorno na tela.
+     */
+    private boolean cont = false;
 
     public MainActivity_show_camera() {
         Log.i(TAG, "Instantiated new " + this.getClass());
@@ -177,7 +181,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         keypoints_object = new MatOfKeyPoint();
 
         //Lendo arquivo PNG
-        Drawable drawable = ResourcesCompat.getDrawable(getResources(), R.drawable.gabarito_kp10, null);
+        Drawable drawable = ResourcesCompat.getDrawable(getResources(), R.drawable.gabarito_kp10c, null);
 
         if (drawable != null) {
             Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
@@ -298,7 +302,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         }
 
         //<editor-fold desc="Apenas para debug.">
-        if (debug) {
+        if (cont) {
             Mat HFrame = frame.clone();
             Point[] HPoints = getHPoints();
             for (int i = 0; i < 4; i++) {
@@ -342,6 +346,8 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 //            clahe.apply(img_scene, img_scene);
                 Imgproc.GaussianBlur(img_scene, img_scene, gaussianBlurSize, 0);
 //                Imgproc.adaptiveThreshold(img_scene, img_scene, 255, 1, 1, 11, 2);
+
+                Log.v("Homografia", "Pré-processamento: " + workerStopwatch.split() + "ms");
 
                 //Detectando KeyPoints
                 fd.detect(img_scene, keypoints_scene);
@@ -392,53 +398,6 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 if (pts1Mat.total() < 4 || pts2Mat.total() < 4)
                     continue;
 
-                //<editor-fold desc="Apenas para debug.">
-                if (debug) {
-                    // Find homography - here just used to perform match filtering with RANSAC, but could be used to e.g. stitch images
-                    // the smaller the allowed reprojection error (here 15), the more matches are filtered
-                    Mat homog = Calib3d.findHomography(pts2Mat, pts1Mat, Calib3d.RANSAC, 15, outputMask, 2000, 0.995);
-
-                    // outputMask contains zeros and ones indicating which matches are filtered
-                    LinkedList<DMatch> better_matches = new LinkedList<>();
-                    for (int i = 0; i < good_matches.size(); i++) {
-                        if (outputMask.get(i, 0) == null)
-                            continue outerLoop;
-                        if (outputMask.get(i, 0)[0] != 0.0) {
-                            better_matches.add(good_matches.get(i));
-                        }
-                    }
-                    Bitmap scene_bmp = Bitmap.createBitmap(img_scene.cols(), img_scene.rows(), Bitmap.Config.ARGB_8888);
-                    Utils.matToBitmap(img_scene, scene_bmp);
-
-                    Mat obj_corners = new Mat(4, 1, CvType.CV_32FC2);
-                    Mat scene_corners = new Mat(4, 1, CvType.CV_32FC2);
-
-                    obj_corners.put(0, 0, 0, 0);
-                    obj_corners.put(1, 0, img_object.cols(), 0);
-                    obj_corners.put(2, 0, img_object.cols(), img_object.rows());
-                    obj_corners.put(3, 0, 0, img_object.rows());
-
-                    Core.perspectiveTransform(obj_corners, scene_corners, homog);
-
-                    Point[] HPoints = new Point[4];
-                    for (int i = 0; i < 4; i++) {
-                        HPoints[i] = new Point(scene_corners.get(i, 0));
-                    }
-
-                    setHPoints(HPoints);
-
-                    // DRAWING OUTPUT
-                    Mat outputImg = new Mat();
-                    // this will draw all matches, works fine
-                    MatOfDMatch better_matches_mat = new MatOfDMatch();
-                    better_matches_mat.fromList(better_matches);
-                    Features2d.drawMatches(img_scene, keypoints_scene, img_object, keypoints_object, better_matches_mat, outputImg);
-                    Bitmap matches_bmp = Bitmap.createBitmap(outputImg.cols(), outputImg.rows(), Bitmap.Config.ARGB_8888);
-                    Utils.matToBitmap(outputImg, matches_bmp);
-                    Log.v("Homografia", "Debug: " + workerStopwatch.split() + "ms");
-                }
-                //</editor-fold>
-
                 // Find homography - here just used to perform match filtering with RANSAC, but could be used to e.g. stitch images
                 // the smaller the allowed reprojection error (here 15), the more matches are filtered
                 Mat revHomog = Calib3d.findHomography(pts1Mat, pts2Mat, Calib3d.RANSAC, 15, outputMask, 2000, 0.995);
@@ -458,11 +417,58 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 
                 Log.v("Homografia", "Warp Perspective: " + workerStopwatch.split() + "ms");
 
+                //<editor-fold desc="Apenas para debug.">
                 if (debug) {
+                    // Find homography - here just used to perform match filtering with RANSAC, but could be used to e.g. stitch images
+                    // the smaller the allowed reprojection error (here 15), the more matches are filtered
+                    Mat homog = Calib3d.findHomography(pts2Mat, pts1Mat, Calib3d.RANSAC, 15, outputMask, 2000, 0.995);
+
+                    // outputMask contains zeros and ones indicating which matches are filtered
+                    LinkedList<DMatch> better_matches = new LinkedList<>();
+                    for (int i = 0; i < good_matches.size(); i++) {
+                        if (outputMask.get(i, 0) == null) {
+                            continue outerLoop;
+                        }
+                        if (outputMask.get(i, 0)[0] != 0.0) {
+                            better_matches.add(good_matches.get(i));
+                        }
+                    }
+                    Bitmap scene_bmp = Bitmap.createBitmap(img_scene.cols(), img_scene.rows(), Bitmap.Config.ARGB_8888);
+                    Utils.matToBitmap(img_scene, scene_bmp);
+
+                    if (cont) {
+                        Mat obj_corners = new Mat(4, 1, CvType.CV_32FC2);
+                        Mat scene_corners = new Mat(4, 1, CvType.CV_32FC2);
+
+                        obj_corners.put(0, 0, 0, 0);
+                        obj_corners.put(1, 0, img_object.cols(), 0);
+                        obj_corners.put(2, 0, img_object.cols(), img_object.rows());
+                        obj_corners.put(3, 0, 0, img_object.rows());
+
+                        Core.perspectiveTransform(obj_corners, scene_corners, homog);
+
+                        Point[] HPoints = new Point[4];
+                        for (int i = 0; i < 4; i++) {
+                            HPoints[i] = new Point(scene_corners.get(i, 0));
+                        }
+
+                        setHPoints(HPoints);
+                    }
+
+                    // DRAWING OUTPUT
+                    Mat outputImg = new Mat();
+                    // this will draw all matches, works fine
+                    MatOfDMatch better_matches_mat = new MatOfDMatch();
+                    better_matches_mat.fromList(better_matches);
+                    Features2d.drawMatches(img_scene, keypoints_scene, img_object, keypoints_object, better_matches_mat, outputImg);
+                    Bitmap matches_bmp = Bitmap.createBitmap(outputImg.cols(), outputImg.rows(), Bitmap.Config.ARGB_8888);
+                    Utils.matToBitmap(outputImg, matches_bmp);
+
                     Bitmap warp_bmp = Bitmap.createBitmap(imgOut.cols(), imgOut.rows(), Bitmap.Config.ARGB_8888);
                     Utils.matToBitmap(imgOut, warp_bmp);
-                    Log.v("WarpingPerspective", "Objeto encontrado");
+                    Log.v("Homografia", "Debug: " + workerStopwatch.split() + "ms");
                 }
+                //</editor-fold>
                 //TODO: Mudar estado para ObjectFound e ler as respostas na prova.
             }
         }
