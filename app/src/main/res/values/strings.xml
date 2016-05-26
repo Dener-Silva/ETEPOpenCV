@@ -2,4 +2,5 @@
     <string name="app_name">OpenCVDemo</string>
     <string name="Result_img_view">Visualização do resultado</string>
     <string name="view_finder">Viewfinder</string>
+    <string name="contornos">Contornos</string>
 </resources>

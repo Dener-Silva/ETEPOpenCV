@@ -18,6 +18,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.WindowManager;
+import android.widget.CompoundButton;
+import android.widget.Switch;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
@@ -112,7 +114,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
     /**
      * Mude para true para funções de teste.
      */
-    private boolean debug = true;
+    private boolean debug = false;
     /**
      * Mude para true para mostrar o contorno na tela.
      */
@@ -132,6 +134,15 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.show_camera);
         mOpenCvCameraView = (JavaCameraView) findViewById(R.id.show_camera_activity_java_surface_view);
+        final Switch contornosSW = (Switch) findViewById(R.id.switch1);
+        assert contornosSW != null;
+        contornosSW.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView,
+                                         boolean isChecked) {
+                cont = isChecked;
+            }
+        });
 
         //Checando permissão de acesso à câmera. Caso haja permissão, conectar à câmera.
         //Caso não haja, solicita a permissão ao usuário.
@@ -181,7 +192,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         keypoints_object = new MatOfKeyPoint();
 
         //Lendo arquivo PNG
-        Drawable drawable = ResourcesCompat.getDrawable(getResources(), R.drawable.gabarito_kp10c, null);
+        Drawable drawable = ResourcesCompat.getDrawable(getResources(), R.drawable.gabarito_kp10, null);
 
         if (drawable != null) {
             Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
@@ -295,7 +306,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 break;
             case Initializing:
                 setState(State.Running);
-                Log.v("onCameraFrame", "Tempo decorrido de onCreate até receber o primeiro frame:" +
+                Log.v("onCameraFrame", "Tempo decorrido de onCreate até receber o primeiro frame: " +
                         initStopwatch.getElapsedTime() + "ms");
                 break;
             //Outros casos virão aqui
@@ -333,6 +344,8 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 MatOfKeyPoint keypoints_scene = new MatOfKeyPoint();
                 Mat descriptors_scene = new Mat();
                 Log.v("Homografia", "Imagem processada em " + workerStopwatch.getElapsedTime() + "ms");
+                //Este bloco Try limita as iterações por segundo nesta Thread, para liberar tempo
+                // de CPU. Atualmente desativado.
 //                try {
 //                    Thread.sleep(Math.max(1000 - (int) workerStopwatch.getElapsedTime(), 0));
 //                } catch (InterruptedException e) {
@@ -415,13 +428,36 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                         Imgproc.ADAPTIVE_THRESH_MEAN_C,
                         Imgproc.THRESH_BINARY, 61, 15);
 
+                //É imgOut a imagem que devemos usar na etapa de ler as respostas.
+
                 Log.v("Homografia", "Warp Perspective: " + workerStopwatch.split() + "ms");
 
                 //<editor-fold desc="Apenas para debug.">
-                if (debug) {
+                if (cont) {
                     // Find homography - here just used to perform match filtering with RANSAC, but could be used to e.g. stitch images
                     // the smaller the allowed reprojection error (here 15), the more matches are filtered
                     Mat homog = Calib3d.findHomography(pts2Mat, pts1Mat, Calib3d.RANSAC, 15, outputMask, 2000, 0.995);
+
+                    Mat obj_corners = new Mat(4, 1, CvType.CV_32FC2);
+                    Mat scene_corners = new Mat(4, 1, CvType.CV_32FC2);
+
+                    obj_corners.put(0, 0, 0, 0);
+                    obj_corners.put(1, 0, img_object.cols(), 0);
+                    obj_corners.put(2, 0, img_object.cols(), img_object.rows());
+                    obj_corners.put(3, 0, 0, img_object.rows());
+
+                    Core.perspectiveTransform(obj_corners, scene_corners, homog);
+
+                    Point[] HPoints = new Point[4];
+                    for (int i = 0; i < 4; i++) {
+                        HPoints[i] = new Point(scene_corners.get(i, 0));
+                    }
+
+                    setHPoints(HPoints);
+                }
+                if (debug) {
+                    Bitmap scene_bmp = Bitmap.createBitmap(img_scene.cols(), img_scene.rows(), Bitmap.Config.ARGB_8888);
+                    Utils.matToBitmap(img_scene, scene_bmp);
 
                     // outputMask contains zeros and ones indicating which matches are filtered
                     LinkedList<DMatch> better_matches = new LinkedList<>();
@@ -432,27 +468,6 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                         if (outputMask.get(i, 0)[0] != 0.0) {
                             better_matches.add(good_matches.get(i));
                         }
-                    }
-                    Bitmap scene_bmp = Bitmap.createBitmap(img_scene.cols(), img_scene.rows(), Bitmap.Config.ARGB_8888);
-                    Utils.matToBitmap(img_scene, scene_bmp);
-
-                    if (cont) {
-                        Mat obj_corners = new Mat(4, 1, CvType.CV_32FC2);
-                        Mat scene_corners = new Mat(4, 1, CvType.CV_32FC2);
-
-                        obj_corners.put(0, 0, 0, 0);
-                        obj_corners.put(1, 0, img_object.cols(), 0);
-                        obj_corners.put(2, 0, img_object.cols(), img_object.rows());
-                        obj_corners.put(3, 0, 0, img_object.rows());
-
-                        Core.perspectiveTransform(obj_corners, scene_corners, homog);
-
-                        Point[] HPoints = new Point[4];
-                        for (int i = 0; i < 4; i++) {
-                            HPoints[i] = new Point(scene_corners.get(i, 0));
-                        }
-
-                        setHPoints(HPoints);
                     }
 
                     // DRAWING OUTPUT
