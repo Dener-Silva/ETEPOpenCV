@@ -485,7 +485,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 }
                 //</editor-fold>
                 //TODO: Mudar estado para ObjectFound e ler as respostas na prova.
-                new Leitor().ReadTest(imgOut);
+                new Leitor().LerProva(imgOut);
                 Log.v("Leitura", "Total: " + workerStopwatch.split() + "ms");
             }
         }

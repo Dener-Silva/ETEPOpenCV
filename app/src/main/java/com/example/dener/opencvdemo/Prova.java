@@ -6,6 +6,6 @@ package com.example.dener.opencvdemo;
 public class Prova {
     public Integer ra;
     public Integer codigoDaProva;
-    public boolean[] tipo = new boolean[3];
+    public boolean[] tipo;
     public boolean[][] questao = new boolean[16][];
 }

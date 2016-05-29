@@ -21,9 +21,17 @@ public class Leitor {
                 posY = 0.660873440285205;
     }
 
-    public void ReadTest(Mat test) {
+    static class Tipo {
+        static double maskSize,
+                step = 0.0239596469104666,
+                posX = 0.197351828499369,
+                posY = 0.631907308377897;
+    }
+
+    public void LerProva(Mat test) {
         mat = test;
         Prova p = new Prova();
+        p.tipo = ReadQuestion(Tipo.posX, Tipo.posY, Tipo.step, 3);
         for (int i = 0; i < 8; i++) {
             double y = Questoes.posY + ((double) i * Questoes.stepY);
             p.questao[i] = ReadQuestion(Questoes.posX1a8, y, Questoes.step, 5);
@@ -84,6 +92,6 @@ public class Leitor {
                 sum += mat.get(j, i)[0];
             }
         }
-        return sum /(float) quant;
+        return sum / (float) quant;
     }
 }
