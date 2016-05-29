@@ -9,11 +9,11 @@ import org.opencv.core.Mat;
  */
 public class Leitor {
     Mat mat;
-    int totalX, totalY;
-    double threshold = 128;
+    int cols, rows;
+    double threshold = 128, maskSize = 0.021437578814628;
 
     static class Questoes {
-        static double maskSize = 0.021437578814628,
+        static double
                 step = 0.0239596469104666,
                 stepY = 0.0240641711229946,
                 posX1a8 = 0.353720050441362,
@@ -22,15 +22,28 @@ public class Leitor {
     }
 
     static class Tipo {
-        static double maskSize,
+        static double
                 step = 0.0239596469104666,
                 posX = 0.197351828499369,
                 posY = 0.631907308377897;
     }
 
+    static class Campos {
+        static double
+                step = 0.0239596469104666,
+                stepY = 0.0169340463458110,
+                posXRA = 0.513240857503153,
+                posXCod = 0.723833543505675,
+                posY = 0.382352941176471;
+    }
+
     public void LerProva(Mat test) {
         mat = test;
+        rows = mat.rows();
+        cols = mat.cols();
         Prova p = new Prova();
+        p.ra = ReadCode(Campos.posXRA, Campos.posY, Campos.step, Campos.stepY, 8);
+        p.codigoDaProva = ReadCode(Campos.posXCod, Campos.posY, Campos.step, Campos.stepY, 8);
         p.tipo = ReadQuestion(Tipo.posX, Tipo.posY, Tipo.step, 3);
         for (int i = 0; i < 8; i++) {
             double y = Questoes.posY + ((double) i * Questoes.stepY);
@@ -59,7 +72,7 @@ public class Leitor {
 
         for (int i = 0; i < size; i++) {
             double x = startX + ((double) i * step);
-            double avg = Average(x, startY, Questoes.maskSize);
+            double avg = Average(x, startY, maskSize);
             b[i] = avg < threshold;
         }
         return b;
@@ -75,15 +88,32 @@ public class Leitor {
      * @param size   Quantos dígitos serão lidos
      * @return Número lido. Zero se o campo estiver vazio, nulo caso a leitura seja inválida.
      */
-    Integer ReadCode(double startX, double startY, double step, int size) {
-        return null;
+    Integer ReadCode(double startX, double startY, double step, double stepY, int size) {
+        Integer ret = 0;
+
+        for (int i = 0; i < size; i++) {
+            double x = startX + ((double) i * step);
+            int quant = 0;
+            for (int j = 0; j < 10; j++) {
+                double y = startY + ((double) j * stepY);
+                double avg = Average(x, y, maskSize);
+                if (avg < threshold) {
+                    quant++;
+                    ret += j * (int) Math.pow (10, size - i - 1);
+                }
+                if (quant > 1) {
+                    return null;
+                }
+            }
+        }
+        return ret;
     }
 
     double Average(double startX, double startY, double maskSize) {
-        int startXPos = (int) Math.round((float) mat.cols() * startX);
-        int endXPos = (int) Math.round((float) mat.cols() * (startX + maskSize));
-        int startYPos = (int) Math.round((float) mat.rows() * startY);
-        int endYPos = (int) Math.round((float) mat.rows() * (startY + maskSize));
+        int startXPos = (int) Math.round((float) cols * startX);
+        int endXPos = (int) Math.round((float) cols * (startX + maskSize));
+        int startYPos = (int) Math.round((float) rows * startY);
+        int endYPos = (int) Math.round((float) rows * (startY + maskSize));
 
         double sum = 0;
         int quant = (endXPos - startXPos) * (endYPos - startYPos);
