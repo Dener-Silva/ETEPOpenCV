@@ -110,6 +110,8 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
     private DescriptorExtractor extractor;
     private DescriptorMatcher matcher;
 //    private CLAHE clahe;
+    Worker worker = new Worker();
+    Leitor leitor = new Leitor();
 
     /**
      * Mude para true para funções de teste.
@@ -217,7 +219,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         extractor.compute(img_object, keypoints_object, descriptors_object);
 
         //Criando a thread de cálculos
-        t = new Thread(new Worker());
+        t = new Thread(worker);
 
         //Informando que a inicialização terminou
         Log.d("Inicialização", "Finalizado. Estado = rodando");
@@ -296,7 +298,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 switch (t.getState()) {
                     case TERMINATED:
                         //Caso o processamento tenha acabado, a Thread é recriada
-                        t = new Thread(new Worker());
+                        t = new Thread(worker);
                         break;
                     case NEW:
                         //Atribuindo o frame em mRgba para que a outra Thread leia.
@@ -485,8 +487,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 }
                 //</editor-fold>
                 //TODO: Mudar estado para ObjectFound e ler as respostas na prova.
-                new Leitor().LerProva(imgOut);
-                Log.v("Leitura", "Total: " + workerStopwatch.split() + "ms");
+                leitor.LerProva(imgOut);
             }
         }
     }

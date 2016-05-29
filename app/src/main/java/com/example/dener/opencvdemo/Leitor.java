@@ -11,6 +11,7 @@ public class Leitor {
     Mat mat;
     int cols, rows;
     double threshold = 128, maskSize = 0.021437578814628;
+    Stopwatch stopwatch = new Stopwatch();
 
     static class Questoes {
         static double
@@ -38,6 +39,7 @@ public class Leitor {
     }
 
     public void LerProva(Mat test) {
+        stopwatch.start();
         mat = test;
         rows = mat.rows();
         cols = mat.cols();
@@ -53,7 +55,7 @@ public class Leitor {
             double y = Questoes.posY + ((double) (i - 8) * Questoes.stepY);
             p.questao[i] = ReadQuestion(Questoes.posX9a16, y, Questoes.step, 5);
         }
-        Log.d("t", "t");
+        Log.v("Leitura", "Leitura: " + stopwatch.getElapsedTime());
     }
 
     /**

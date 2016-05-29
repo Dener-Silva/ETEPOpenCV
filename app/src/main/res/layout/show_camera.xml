@@ -9,13 +9,13 @@
         android:layout_height="match_parent"
         android:visibility="invisible"
         android:id="@+id/show_camera_activity_java_surface_view"
-        opencv:show_fps="true"
+        opencv:show_fps="false"
         opencv:camera_id="any"
         android:layout_gravity="center" />
 
     <ImageView
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:id="@+id/viewfinder"
         android:contentDescription="@string/view_finder"
         android:background="@drawable/viewfinder"
@@ -24,6 +24,7 @@
         android:visibility="gone" />
 
     <LinearLayout
+        android:visibility="gone"
         android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
