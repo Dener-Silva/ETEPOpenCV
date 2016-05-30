@@ -342,10 +342,6 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         public void run() {
             outerLoop:
             while (state == State.Running) {
-                Mat img_scene = getmRgba().clone();
-                MatOfKeyPoint keypoints_scene = new MatOfKeyPoint();
-                Mat descriptors_scene = new Mat();
-                Log.v("Homografia", "Imagem processada em " + workerStopwatch.getElapsedTime() + "ms");
                 //Este bloco Try limita as iterações por segundo nesta Thread, para liberar tempo
                 // de CPU. Atualmente desativado.
 //                try {
@@ -353,6 +349,10 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 //                } catch (InterruptedException e) {
 //                    e.printStackTrace();
 //                }
+                Mat img_scene = getmRgba().clone();
+                MatOfKeyPoint keypoints_scene = new MatOfKeyPoint();
+                Mat descriptors_scene = new Mat();
+                Log.v("Homografia", "Imagem processada em " + workerStopwatch.getElapsedTime() + "ms");
                 workerStopwatch.start();
 
                 //Passo 1: Pré-processamento
@@ -417,12 +417,12 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 // the smaller the allowed reprojection error (here 15), the more matches are filtered
                 Mat revHomog = Calib3d.findHomography(pts1Mat, pts2Mat, Calib3d.RANSAC, 15, outputMask, 2000, 0.995);
                 Log.v("Homografia", "Homografia: " + workerStopwatch.split() + "ms");
-                Mat imgOut = new Mat(img_object.size(), CvType.CV_8UC4);
                 //O tamanho da matriz de transformação revHomog deve ser 3*3.
                 // Caso não seja, é sinal de que a homografia falhou.
-                if (!revHomog.size().equals(homSize)) {
+                if (!revHomog.size().equals(homSize) || !niceHomography(revHomog)) {
                     continue;
                 }
+                Mat imgOut = new Mat(img_object.size(), CvType.CV_8UC4);
                 Imgproc.warpPerspective(img_scene, imgOut, revHomog, imgOut.size());
 
                 // binariza imagem usando um threshold adaptativo
@@ -489,6 +489,23 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 //TODO: Mudar estado para ObjectFound e ler as respostas na prova.
                 leitor.LerProva(imgOut);
             }
+        }
+
+        boolean niceHomography(Mat h) {
+            double det = h.get(0, 0)[0] * h.get(1, 1)[0] - h.get(1, 0)[0] * h.get(0, 1)[0];
+            if (det < 0)
+                return false;
+
+            double N1 = Math.sqrt(h.get(0, 0)[0] * h.get(0, 0)[0] + h.get(1, 0)[0] * h.get(1, 0)[0]);
+            if (N1 > 2 || N1 < 0.05)//Padrão if (N1 > 4 || N1 < 0.1)
+                return false;
+
+            double N2 = Math.sqrt(h.get(0, 1)[0] * h.get(0, 1)[0] + h.get(1, 1)[0] * h.get(1, 1)[0]);
+            if (N2 > 2 || N2 < 0.05)//Padrão if (N2 > 4 || N2 < 0.1)
+                return false;
+
+            double N3 = Math.sqrt(h.get(2, 0)[0] * h.get(2, 0)[0] + h.get(2, 1)[0] * h.get(2, 1)[0]);
+            return N3 <= 0.001; //Padrão if (N3 <= 0.002)
         }
     }
 

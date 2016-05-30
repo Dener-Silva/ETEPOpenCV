@@ -10,8 +10,10 @@ import org.opencv.core.Mat;
 public class Leitor {
     Mat mat;
     int cols, rows;
-    double threshold = 128, maskSize = 0.021437578814628;
+    int threshold = 128;
+    final int contarPixels = 2;
     Stopwatch stopwatch = new Stopwatch();
+    double maskSize = 0.021437578814628;
 
     static class Questoes {
         static double
@@ -117,13 +119,13 @@ public class Leitor {
         int startYPos = (int) Math.round((float) rows * startY);
         int endYPos = (int) Math.round((float) rows * (startY + maskSize));
 
-        double sum = 0;
-        int quant = (endXPos - startXPos) * (endYPos - startYPos);
-        for (int i = startXPos; i < endXPos; i++) {
-            for (int j = startYPos; j < endYPos; j++) {
+        float sum = 0;
+        float quant = (endXPos - startXPos) * (endYPos - startYPos);
+        for (int i = startXPos; i < endXPos; i+= contarPixels) {
+            for (int j = startYPos; j < endYPos; j+= contarPixels) {
                 sum += mat.get(j, i)[0];
             }
         }
-        return sum / (float) quant;
+        return sum * contarPixels * contarPixels / quant;
     }
 }
