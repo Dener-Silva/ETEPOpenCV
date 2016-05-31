@@ -5,6 +5,7 @@ import android.util.Log;
 import org.opencv.core.Mat;
 
 /**
+ * Lê a imagem da prova, e detecta o que foi marcado.
  * Created by dener on 28/05/2016.
  */
 public class Leitor {
@@ -40,7 +41,7 @@ public class Leitor {
                 posY = 0.382352941176471;
     }
 
-    public void LerProva(Mat test) {
+    public Prova LerProva(Mat test) {
         stopwatch.start();
         mat = test;
         rows = mat.rows();
@@ -58,6 +59,7 @@ public class Leitor {
             p.questao[i] = ReadQuestion(Questoes.posX9a16, y, Questoes.step, 5);
         }
         Log.v("Leitura", "Leitura: " + stopwatch.getElapsedTime());
+        return p;
     }
 
     /**
