@@ -3,6 +3,7 @@ package com.example.dener.opencvdemo;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.DialogFragment;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
@@ -12,6 +13,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.SurfaceView;
 import android.view.WindowManager;
 
@@ -27,7 +29,7 @@ import org.opencv.core.Mat;
 
 // OpenCV Classes
 
-public class MainActivity_show_camera extends AppCompatActivity implements CvCameraViewListener2 {
+public class MainActivity_show_camera extends AppCompatActivity implements CvCameraViewListener2, ReaderDialogFragment.ReaderDialogListener {
 
     // Used for logging success or failure messages
     private static final String TAG = "OCVSample::Activity";
@@ -93,10 +95,10 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 
         //Checando permissão de acesso à câmera. Caso haja permissão, conectar à câmera.
         //Caso não haja, solicita a permissão ao usuário.
-        if (ContextCompat.checkSelfPermission(getContext(),
+        if (ContextCompat.checkSelfPermission(getActivity(),
                 Manifest.permission.CAMERA)
                 != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions((Activity) getContext(),
+            ActivityCompat.requestPermissions(getActivity(),
                     new String[]{Manifest.permission.CAMERA}, MY_PERMISSIONS_REQUEST_CAMERA);
         } else {
             ExibirCamera();
@@ -124,7 +126,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
             new Thread() {
                 @Override
                 public void run() {
-                    objectParams = new ObjectParams((Activity) getContext());
+                    objectParams = new ObjectParams(getActivity());
                 }
             }.start();
         }
@@ -149,13 +151,13 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 } else {
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
-                    AlertDialog ad = new AlertDialog.Builder(getContext()).create();
+                    AlertDialog ad = new AlertDialog.Builder(getActivity()).create();
                     ad.setCancelable(false); // This blocks the 'BACK' button
                     ad.setMessage("Este aplicativo precisa de permissão para acessar a câmera para funcionar.");
                     ad.setButton(DialogInterface.BUTTON_NEUTRAL, "OK", new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int which) {
                             dialog.dismiss();
-                            ((Activity) getContext()).finish();
+                            getActivity().finish();
                         }
                     });
                     ad.show();
@@ -226,21 +228,23 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
     class Worker implements Runnable {
 
         Stopwatch workerStopwatch = new Stopwatch();
-        final int limite = 0;
+        final int limite = 500;
 
         public void run() {
             while (state == State.Running) {
-                Log.v("Homografia", "Imagem processada em " + workerStopwatch.getElapsedTime() + "ms");
                 limitarFrequencia();
                 workerStopwatch.start();
 
                 Mat imgOut = homography.calculate(getmRgba(), objectParams);
 
-                if (imgOut == null)
+                if (imgOut == null) {
+                    Log.v("Homografia", "Imagem processada em " + workerStopwatch.getElapsedTime() + "ms");
                     continue;
+                }
 
-                //TODO: Mudar estado para ObjectFound e ler as respostas na prova.
-                leitor.LerProva(imgOut);
+                Prova p = leitor.LerProva(imgOut);
+
+                exibir(p);
             }
         }
 
@@ -253,6 +257,23 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 e.printStackTrace();
             }
         }
+
+        void exibir(Prova prova){
+            Log.v("Homografia", "Imagem processada em " + workerStopwatch.getElapsedTime() + "ms");
+            setState(State.Completed);
+            // Create an instance of the dialog fragment and show it
+            ReaderDialogFragment dialog = new ReaderDialogFragment();
+            dialog.exibirProva(prova);
+            dialog.show(getFragmentManager(), "Reader");
+        }
+    }
+
+    // The dialog fragment receives a reference to this Activity through the
+    // Fragment.onAttach() callback, which it uses to call the following methods
+    // defined by the NoticeDialogFragment.NoticeDialogListener interface
+    @Override
+    public void onDialogPositiveClick(DialogFragment dialog){
+        setState(State.Running);
     }
 
     synchronized Mat getmRgba() {
@@ -264,7 +285,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         this.mRgba = mRgba;
     }
 
-    public Context getContext() {
+    public Activity getActivity() {
         return this;
     }
 

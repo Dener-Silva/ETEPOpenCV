@@ -11,7 +11,7 @@ import org.opencv.core.Mat;
 public class Leitor {
     Mat mat;
     int cols, rows;
-    int threshold = 128;
+    float threshold = 128;
     final int contarPixels = 2;
     Stopwatch stopwatch = new Stopwatch();
     double maskSize = 0.021437578814628;
@@ -78,8 +78,7 @@ public class Leitor {
 
         for (int i = 0; i < size; i++) {
             double x = startX + ((double) i * step);
-            double avg = Average(x, startY, maskSize);
-            b[i] = avg < threshold;
+            b[i] = Average(x, startY, maskSize);
         }
         return b;
     }
@@ -102,8 +101,7 @@ public class Leitor {
             int quant = 0;
             for (int j = 0; j < 10; j++) {
                 double y = startY + ((double) j * stepY);
-                double avg = Average(x, y, maskSize);
-                if (avg < threshold) {
+                if (Average(x, y, maskSize)) {
                     quant++;
                     ret += j * (int) Math.pow (10, size - i - 1);
                 }
@@ -115,19 +113,31 @@ public class Leitor {
         return ret;
     }
 
-    double Average(double startX, double startY, double maskSize) {
+    boolean Average(double startX, double startY, double maskSize) {
         int startXPos = (int) Math.round((float) cols * startX);
         int endXPos = (int) Math.round((float) cols * (startX + maskSize));
         int startYPos = (int) Math.round((float) rows * startY);
         int endYPos = (int) Math.round((float) rows * (startY + maskSize));
 
-        float sum = 0;
-        float quant = (endXPos - startXPos) * (endYPos - startYPos);
+        int light = 0;
+        int dark = 0;
+        float quant = ((endXPos - startXPos) * (endYPos - startYPos))/(contarPixels * contarPixels);
+        int quantThreshold = (int)((threshold / 255f) * quant);
         for (int i = startXPos; i < endXPos; i+= contarPixels) {
             for (int j = startYPos; j < endYPos; j+= contarPixels) {
-                sum += mat.get(j, i)[0];
+                if (mat.get(j, i)[0] > 0) {
+                    light++;
+                } else {
+                    dark++;
+                }
+                if (light > quant - quantThreshold) {
+                    return false;
+                }
+                if (dark > quantThreshold) {
+                    return true;
+                }
             }
         }
-        return sum * contarPixels * contarPixels / quant;
+        return false;
     }
 }
