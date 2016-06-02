@@ -22,7 +22,7 @@ public class ReaderDialogFragment extends DialogFragment {
 
 
     public interface ReaderDialogListener {
-        void onDialogPositiveClick(DialogFragment dialog);
+        void onDialogDismissed(DialogFragment dialog);
     }
 
     // Use this instance of the interface to deliver action events
@@ -39,7 +39,7 @@ public class ReaderDialogFragment extends DialogFragment {
         } catch (ClassCastException e) {
             // The activity doesn't implement the interface, throw exception
             throw new ClassCastException(activity.toString()
-                    + " must implement NoticeDialogListener");
+                    + " must implement ReaderDialogListener");
         }
     }
 
@@ -55,13 +55,7 @@ public class ReaderDialogFragment extends DialogFragment {
         builder.setView(content)
                 .setTitle(R.string.prova)
                 // Add action buttons
-                .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int id) {
-                        // sign in the user ...
-                        mListener.onDialogPositiveClick(ReaderDialogFragment.this);
-                    }
-                });
+                .setPositiveButton(R.string.ok, null);
         //<editor-fold desc="Definindo textViews">
         textViews = new TextView[] {
                 (TextView)content.findViewById(R.id.questao1),
@@ -89,31 +83,28 @@ public class ReaderDialogFragment extends DialogFragment {
         return builder.create();
     }
 
+    public void onDismiss(DialogInterface dialogInterface) {
+        super.onDismiss(dialogInterface);
+        mListener.onDialogDismissed(this);
+    }
+
+    /**
+     * Define o objeto Prova que será exibido
+     * @param prova Objeto Prova que será exibido
+     */
     public void exibirProva (Prova prova) {
         this.p = prova;
     }
 
+    /**
+     * Gera os textos a serem exibidos na caixa de diáligo.
+     */
     private void setTextViews() {
-
         String raText = "RA: ";
-        if (p.ra == null) {
-            raText = raText.concat("Inválido");
-        } else if (p.ra == 0) {
-            raText = raText.concat("Em branco");
-        } else {
-            raText = raText.concat(p.ra.toString());
-        }
-        textViews[16].setText(raText);
+        textViews[16].setText(appendCode(raText, p.ra));
 
         String codText = "Cód.: ";
-        if (p.codigoDaProva == null) {
-            codText = codText.concat("Inválido");
-        } else if (p.codigoDaProva == 0) {
-            codText = codText.concat("Em branco");
-        } else {
-            codText = codText.concat(p.codigoDaProva.toString());
-        }
-        textViews[17].setText(codText);
+        textViews[17].setText(appendCode(codText, p.codigoDaProva));
 
         String tipoText = "Tipo: ";
         textViews[18].setText(appendChecked(tipoText, p.tipo));
@@ -124,6 +115,14 @@ public class ReaderDialogFragment extends DialogFragment {
         }
     }
 
+    /**
+     * Adiciona a alternativa marcada ao fim do texto.
+     * Adiciona "Em branco" se não houver nada marcado,
+     * ou "Inválida" se houver mais de uma alternativa marcada.
+     * @param text Texto inicial
+     * @param q Questão
+     * @return Texto final
+     */
     String appendChecked(String text, boolean[] q) {
         int quant = 0;
         //Contando a quantidade de alternativas marcadas.
@@ -162,6 +161,26 @@ public class ReaderDialogFragment extends DialogFragment {
             } else {
                 ret = text.concat("Inválida");
             }
+        }
+        return ret;
+    }
+
+    /**
+     * Adiciona o valor numérico ao fim do texto.
+     * Adiciona "Em branco" se não houver nada marcado,
+     * ou "Inválido" se houver mais de uma alternativa marcada.
+     * @param text Texto inicial
+     * @param integer Valor
+     * @return Texto final
+     */
+    String appendCode(String text, Integer integer){
+        String ret;
+        if (integer == null) {
+            ret = text.concat("Inválido");
+        } else if (integer == 0) {
+            ret = text.concat("Em branco");
+        } else {
+            ret = text.concat(integer.toString());
         }
         return ret;
     }

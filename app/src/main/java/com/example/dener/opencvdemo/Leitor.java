@@ -9,13 +9,27 @@ import org.opencv.core.Mat;
  * Created by dener on 28/05/2016.
  */
 public class Leitor {
+    //Imagem da prova
     Mat mat;
+    //Colunas e linhas da imagem
     int cols, rows;
+    //Limiar da detecção de alternativas assinaladas.
+    //Um valor menor deixa a detecção mais sensível, mas pode causar falsos positivos.
+    //Um valor maior pode causar falsos negativos.
     float threshold = 128;
+    //Não é necessário computar todos os pixels para ter uma média relativamente boa.
+    //O algoritmo ignora (contarPixels² - 1) pixels. Um valor maior aumenta muito a velocidade
+    //da deteção, ao custo de confiabilidade.
     final int contarPixels = 2;
+
     Stopwatch stopwatch = new Stopwatch();
+    //Tamanho da máscara, em proporção à largura da folha.
     double maskSize = 0.021437578814628;
 
+    //Pontos de interesse.
+    //Os pontos devem ser dados como fração
+    //do tamanho da folha (para manter invariabilidade de tamanho).
+    //Todos são com relação ao topo e esquerda.
     static class Questoes {
         static double
                 step = 0.0239596469104666,
@@ -41,15 +55,22 @@ public class Leitor {
                 posY = 0.382352941176471;
     }
 
+    /**Lê as alternativas assinaladas na prova.
+     * @param test Imagem da prova. A imagem deve ser binarizada para funcionar corretamente.
+     * @return Objeto Prova com as informações relevantes.
+     */
     public Prova LerProva(Mat test) {
         stopwatch.start();
         mat = test;
         rows = mat.rows();
         cols = mat.cols();
         Prova p = new Prova();
+        //Lendo o RA e código da prova
         p.ra = ReadCode(Campos.posXRA, Campos.posY, Campos.step, Campos.stepY, 8);
         p.codigoDaProva = ReadCode(Campos.posXCod, Campos.posY, Campos.step, Campos.stepY, 8);
+        //O tipo de prova é lido como se fosse uma questão (de 3 alternativas).
         p.tipo = ReadQuestion(Tipo.posX, Tipo.posY, Tipo.step, 3);
+        //Lendo questões
         for (int i = 0; i < 8; i++) {
             double y = Questoes.posY + ((double) i * Questoes.stepY);
             p.questao[i] = ReadQuestion(Questoes.posX1a8, y, Questoes.step, 5);
@@ -113,12 +134,23 @@ public class Leitor {
         return ret;
     }
 
+    /**
+     * Tira a média dos valores dos pixels. Retorna se esta alternativa foi assinalada.
+     * A imagem de entrada deve ser binarizada para funcionar corretamente.
+     * @param startX Ponto X (topo esquerda) para iniciar a leitura
+     * @param startY Ponto Y (topo esquerda) para iniciar a leitura
+     * @param maskSize Tamanho do quadrado da alternativa.
+     * @return Se esta alternativa foi assinalada.
+     */
     boolean Average(double startX, double startY, double maskSize) {
         int startXPos = (int) Math.round((float) cols * startX);
         int endXPos = (int) Math.round((float) cols * (startX + maskSize));
         int startYPos = (int) Math.round((float) rows * startY);
         int endYPos = (int) Math.round((float) rows * (startY + maskSize));
 
+        //Apenas é necessário visitar os pixels até o ponto em que a média já é
+        //garantida estar acima ou abaixo de threshold. Isso aumenta bastante a
+        //velociadade de detecção sem nenhum efeito colateral.
         int light = 0;
         int dark = 0;
         float quant = ((endXPos - startXPos) * (endYPos - startYPos))/(contarPixels * contarPixels);

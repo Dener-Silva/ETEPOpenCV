@@ -124,6 +124,6 @@ public class Homography {
             return false;
 
         double N3 = Math.sqrt(h.get(2, 0)[0] * h.get(2, 0)[0] + h.get(2, 1)[0] * h.get(2, 1)[0]);
-        return N3 <= 0.001; //Padrão if (N3 <= 0.002)
+        return N3 <= 0.001; //Padrão return (N3 <= 0.002)
     }
 }

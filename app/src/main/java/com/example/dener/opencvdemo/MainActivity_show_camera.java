@@ -225,6 +225,11 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         return frame; // This function must return
     }
 
+    @Override
+    public void onDialogDismissed(DialogFragment dialog) {
+        setState(lastState);
+    }
+
     class Worker implements Runnable {
 
         Stopwatch workerStopwatch = new Stopwatch();
@@ -266,14 +271,6 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
             dialog.exibirProva(prova);
             dialog.show(getFragmentManager(), "Reader");
         }
-    }
-
-    // The dialog fragment receives a reference to this Activity through the
-    // Fragment.onAttach() callback, which it uses to call the following methods
-    // defined by the NoticeDialogFragment.NoticeDialogListener interface
-    @Override
-    public void onDialogPositiveClick(DialogFragment dialog){
-        setState(State.Running);
     }
 
     synchronized Mat getmRgba() {
