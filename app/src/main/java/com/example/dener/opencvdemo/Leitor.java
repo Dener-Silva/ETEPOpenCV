@@ -84,7 +84,7 @@ public class Leitor {
     }
 
     /**
-     * Retorna qual (quais) letras está (estão) marcadas. Os parâmetros devem ser dados como fração
+     * Retorna qual letra está marcada. Os parâmetros devem ser dados como fração
      * do tamanho da folha (para manter invariabilidade de tamanho).
      *
      * @param startX Ponto X (topo esquerda) para iniciar a leitura

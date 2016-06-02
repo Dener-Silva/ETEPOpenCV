@@ -127,38 +127,30 @@ public class ReaderDialogFragment extends DialogFragment {
      * @return Texto final
      */
     String appendChecked(String text, Integer q, boolean feminino) {
-        String ret;
         if (q == null)
-            ret = text.concat("Em branco");
+            return text.concat("Em branco");
         else {
             switch (q) {
                 case 0:
-                    ret = text.concat("A");
-                    break;
+                    return text.concat("A");
                 case 1:
-                    ret = text.concat("B");
-                    break;
+                    return text.concat("B");
                 case 2:
-                    ret = text.concat("C");
-                    break;
+                    return text.concat("C");
                 case 3:
-                    ret = text.concat("D");
-                    break;
+                    return text.concat("D");
                 case 4:
-                    ret = text.concat("E");
-                    break;
+                    return text.concat("E");
                 case -1:
                     if (feminino) {
-                        ret = text.concat("Inválida");
+                        return text.concat("Inválida");
                     } else {
-                        ret = text.concat("Inválido");
+                        return text.concat("Inválido");
                     }
-                    break;
                 default:
-                    ret = text.concat("Erro");
+                    return text.concat("Erro");
             }
         }
-        return ret;
     }
 
     /**
@@ -171,14 +163,12 @@ public class ReaderDialogFragment extends DialogFragment {
      * @return Texto final
      */
     String appendCode(String text, Integer integer) {
-        String ret;
         if (integer == null) {
-            ret = text.concat("Em branco");
+            return text.concat("Em branco");
         } else if (integer == -1) {
-            ret = text.concat("Inválido");
+            return text.concat("Inválido");
         } else {
-            ret = text.concat(integer.toString());
+            return text.concat(integer.toString());
         }
-        return ret;
     }
 }
