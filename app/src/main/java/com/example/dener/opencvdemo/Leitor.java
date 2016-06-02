@@ -126,7 +126,14 @@ public class Leitor {
                     quant++;
                     ret += j * (int) Math.pow (10, size - i - 1);
                 }
+                //Pode haver apenas um algarismo marcado. Caso contrário, a leitura é inválida.
+                //Retornando agora economiza tempo.
                 if (quant > 1) {
+                    return null;
+                }
+                //Se não há nada marcado, a leitura é inválida.
+                //Retornando agora economiza tempo.
+                if (j == 9 && quant != 1) {
                     return null;
                 }
             }

@@ -227,7 +227,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 
     @Override
     public void onDialogDismissed(DialogFragment dialog) {
-        setState(lastState);
+        setState(State.Running);
     }
 
     class Worker implements Runnable {
