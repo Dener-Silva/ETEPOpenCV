@@ -1,5 +1,6 @@
 package com.example.dener.opencvdemo;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -51,32 +52,32 @@ public class ReaderDialogFragment extends DialogFragment {
 
         // Inflate and set the layout for the dialog
         // Pass null as the parent view because its going in the dialog layout
-        final View content = inflater.inflate(R.layout.dialog, null);
+        @SuppressLint("InflateParams") final View content = inflater.inflate(R.layout.dialog, null);
         builder.setView(content)
                 .setTitle(R.string.prova)
                 // Add action buttons
                 .setPositiveButton(R.string.ok, null);
         //<editor-fold desc="Definindo textViews">
-        textViews = new TextView[] {
-                (TextView)content.findViewById(R.id.questao1),
-                (TextView)content.findViewById(R.id.questao2),
-                (TextView)content.findViewById(R.id.questao3),
-                (TextView)content.findViewById(R.id.questao4),
-                (TextView)content.findViewById(R.id.questao5),
-                (TextView)content.findViewById(R.id.questao6),
-                (TextView)content.findViewById(R.id.questao7),
-                (TextView)content.findViewById(R.id.questao8),
-                (TextView)content.findViewById(R.id.questao9),
-                (TextView)content.findViewById(R.id.questao10),
-                (TextView)content.findViewById(R.id.questao11),
-                (TextView)content.findViewById(R.id.questao12),
-                (TextView)content.findViewById(R.id.questao13),
-                (TextView)content.findViewById(R.id.questao14),
-                (TextView)content.findViewById(R.id.questao15),
-                (TextView)content.findViewById(R.id.questao16),
-                (TextView)content.findViewById(R.id.ra),
-                (TextView)content.findViewById(R.id.codigoDaProva),
-                (TextView)content.findViewById(R.id.tipoDeProva),
+        textViews = new TextView[]{
+                (TextView) content.findViewById(R.id.questao1),
+                (TextView) content.findViewById(R.id.questao2),
+                (TextView) content.findViewById(R.id.questao3),
+                (TextView) content.findViewById(R.id.questao4),
+                (TextView) content.findViewById(R.id.questao5),
+                (TextView) content.findViewById(R.id.questao6),
+                (TextView) content.findViewById(R.id.questao7),
+                (TextView) content.findViewById(R.id.questao8),
+                (TextView) content.findViewById(R.id.questao9),
+                (TextView) content.findViewById(R.id.questao10),
+                (TextView) content.findViewById(R.id.questao11),
+                (TextView) content.findViewById(R.id.questao12),
+                (TextView) content.findViewById(R.id.questao13),
+                (TextView) content.findViewById(R.id.questao14),
+                (TextView) content.findViewById(R.id.questao15),
+                (TextView) content.findViewById(R.id.questao16),
+                (TextView) content.findViewById(R.id.ra),
+                (TextView) content.findViewById(R.id.codigoDaProva),
+                (TextView) content.findViewById(R.id.tipoDeProva),
         };
         setTextViews();
         //</editor-fold>
@@ -90,9 +91,10 @@ public class ReaderDialogFragment extends DialogFragment {
 
     /**
      * Define o objeto Prova que será exibido
+     *
      * @param prova Objeto Prova que será exibido
      */
-    public void exibirProva (Prova prova) {
+    public void exibirProva(Prova prova) {
         this.p = prova;
     }
 
@@ -107,11 +109,11 @@ public class ReaderDialogFragment extends DialogFragment {
         textViews[17].setText(appendCode(codText, p.codigoDaProva));
 
         String tipoText = "Tipo: ";
-        textViews[18].setText(appendChecked(tipoText, p.tipo));
+        textViews[18].setText(appendChecked(tipoText, p.tipo, false));
 
-        for (int q = 0; q < p.questao.length; q++){
+        for (int q = 0; q < p.questao.length; q++) {
             String text = "Questão " + (q + 1) + ": ";
-            textViews[q].setText(appendChecked(text, p.questao[q]));
+            textViews[q].setText(appendChecked(text, p.questao[q], true));
         }
     }
 
@@ -119,47 +121,41 @@ public class ReaderDialogFragment extends DialogFragment {
      * Adiciona a alternativa marcada ao fim do texto.
      * Adiciona "Em branco" se não houver nada marcado,
      * ou "Inválida" se houver mais de uma alternativa marcada.
+     *
      * @param text Texto inicial
-     * @param q Questão
+     * @param q    Questão
      * @return Texto final
      */
-    String appendChecked(String text, boolean[] q) {
-        int quant = 0;
-        //Contando a quantidade de alternativas marcadas.
-        for (boolean b : q){
-            if (b){
-                quant++;
-            }
-        }
-        //Se a quantidade for igual a 1, a questão é válida
-        String ret = "";
-        if (quant == 1) {
-            for (int a = 0; a < q.length; a++){
-                if (q[a]){
-                    switch (a) {
-                        case 0:
-                            ret = text.concat("A");
-                            break;
-                        case 1:
-                            ret = text.concat("B");
-                            break;
-                        case 2:
-                            ret = text.concat("C");
-                            break;
-                        case 3:
-                            ret = text.concat("D");
-                            break;
-                        case 4:
-                            ret = text.concat("E");
-                            break;
+    String appendChecked(String text, Integer q, boolean feminino) {
+        String ret;
+        if (q == null)
+            ret = text.concat("Em branco");
+        else {
+            switch (q) {
+                case 0:
+                    ret = text.concat("A");
+                    break;
+                case 1:
+                    ret = text.concat("B");
+                    break;
+                case 2:
+                    ret = text.concat("C");
+                    break;
+                case 3:
+                    ret = text.concat("D");
+                    break;
+                case 4:
+                    ret = text.concat("E");
+                    break;
+                case -1:
+                    if (feminino) {
+                        ret = text.concat("Inválida");
+                    } else {
+                        ret = text.concat("Inválido");
                     }
-                }
-            }
-        } else {
-            if (quant == 0) {
-                ret = text.concat("Em branco");
-            } else {
-                ret = text.concat("Inválida");
+                    break;
+                default:
+                    ret = text.concat("Erro");
             }
         }
         return ret;
@@ -169,16 +165,17 @@ public class ReaderDialogFragment extends DialogFragment {
      * Adiciona o valor numérico ao fim do texto.
      * Adiciona "Em branco" se não houver nada marcado,
      * ou "Inválido" se houver mais de uma alternativa marcada.
-     * @param text Texto inicial
+     *
+     * @param text    Texto inicial
      * @param integer Valor
      * @return Texto final
      */
-    String appendCode(String text, Integer integer){
+    String appendCode(String text, Integer integer) {
         String ret;
         if (integer == null) {
-            ret = text.concat("Inválido");
-        } else if (integer == 0) {
             ret = text.concat("Em branco");
+        } else if (integer == -1) {
+            ret = text.concat("Inválido");
         } else {
             ret = text.concat(integer.toString());
         }
