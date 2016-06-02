@@ -92,16 +92,23 @@ public class Leitor {
      * @param step   Espaço entre o canto esquerdo de cada alternativa (em proporção com a largura
      *               total)
      * @param size   Quantas letras a questão tem
-     * @return Vetor com true nas questões marcadas
+     * @return Posição marcada. Nulo se o campo estiver vazio, -1 caso a leitura seja inválida.
      */
-    boolean[] ReadQuestion(double startX, double startY, double step, int size) {
-        boolean[] b = new boolean[size];
+    Integer ReadQuestion(double startX, double startY, double step, int size) {
+        int quant = 0;
+        Integer ret = null;
 
         for (int i = 0; i < size; i++) {
             double x = startX + ((double) i * step);
-            b[i] = Average(x, startY, maskSize);
+            if (Average(x, startY, maskSize)) {
+                quant++;
+                ret = i;
+            }
+            if(quant > 1) {
+                return -1;
+            }
         }
-        return b;
+        return ret;
     }
 
     /**
@@ -112,7 +119,7 @@ public class Leitor {
      * @param startY Ponto Y (topo esquerda) para iniciar a leitura
      * @param step   Tamanho da máscara (em proporção com a largura total)
      * @param size   Quantos dígitos serão lidos
-     * @return Número lido. Zero se o campo estiver vazio, nulo caso a leitura seja inválida.
+     * @return Número lido. Nulo se o campo estiver vazio, -1 caso a leitura seja inválida.
      */
     Integer ReadCode(double startX, double startY, double step, double stepY, int size) {
         Integer ret = 0;
@@ -129,7 +136,7 @@ public class Leitor {
                 //Pode haver apenas um algarismo marcado. Caso contrário, a leitura é inválida.
                 //Retornando agora economiza tempo.
                 if (quant > 1) {
-                    return null;
+                    return -1;
                 }
                 //Se não há nada marcado, a leitura é inválida.
                 //Retornando agora economiza tempo.
