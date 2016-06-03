@@ -152,6 +152,8 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                                            @NonNull String permissions[], @NonNull int[] grantResults) {
         switch (requestCode) {
             case MY_PERMISSIONS_REQUEST_CAMERA: {
+                if (ad != null)
+                    ad.dismiss();
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -161,8 +163,6 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 } else {
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
-                    if (ad != null)
-                        ad.dismiss();
                     ad = new AlertDialog.Builder(getActivity()).create();
                     ad.setCancelable(false); // This blocks the 'BACK' button
                     ad.setMessage("Este aplicativo precisa de permissão para acessar a câmera para funcionar.");
