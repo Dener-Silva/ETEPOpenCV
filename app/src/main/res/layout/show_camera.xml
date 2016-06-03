@@ -9,13 +9,13 @@
         android:layout_height="match_parent"
         android:visibility="invisible"
         android:id="@+id/show_camera_activity_java_surface_view"
-        opencv:show_fps="true"
+        opencv:show_fps="false"
         opencv:camera_id="any"
         android:layout_gravity="center" />
 
     <ImageView
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:id="@+id/viewfinder"
         android:contentDescription="@string/view_finder"
         android:background="@drawable/viewfinder"
@@ -23,21 +23,18 @@
         android:layout_gravity="center"
         android:visibility="gone" />
 
-    <LinearLayout
-        android:orientation="vertical"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:padding="10dp"
+        android:visibility="gone">
 
         <Switch
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/contornos"
+            android:text="@string/ignorar_invalidos"
             android:id="@+id/switch1"
-            android:textColor="#ffffff"
-            android:paddingLeft="10dp"
-            android:paddingTop="10dp"
-            android:padding="10dp" />
-
-    </LinearLayout>
+            android:textColor="#ffffff" />
+    </FrameLayout>
 
 </FrameLayout>
