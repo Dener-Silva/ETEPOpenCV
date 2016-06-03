@@ -14,6 +14,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.WindowManager;
+import android.widget.CompoundButton;
+import android.widget.Switch;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
@@ -34,6 +36,8 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
 
     // Loads camera view of OpenCV for us to use. This lets us see using OpenCV
     private CameraBridgeViewBase mOpenCvCameraView;
+
+    private AlertDialog ad;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -68,6 +72,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
     private Worker worker = new Worker();
     private Leitor leitor = new Leitor();
     private Homography homography = new Homography();
+    private boolean ignorarInvalidos;
 
     //Thread usada para processamento em segundo plano
     private Thread t = new Thread(worker);
@@ -90,6 +95,13 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.show_camera);
         mOpenCvCameraView = (JavaCameraView) findViewById(R.id.show_camera_activity_java_surface_view);
+        Switch ignorarInvalidosSw = (Switch) findViewById(R.id.switch1);
+        assert ignorarInvalidosSw != null;
+        ignorarInvalidosSw.setOnCheckedChangeListener(new Switch.OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                ignorarInvalidos = isChecked;
+            }
+        });
 
         //Checando permissão de acesso à câmera. Caso haja permissão, conectar à câmera.
         //Caso não haja, solicita a permissão ao usuário.
@@ -149,7 +161,9 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 } else {
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
-                    AlertDialog ad = new AlertDialog.Builder(getActivity()).create();
+                    if (ad != null)
+                        ad.dismiss();
+                    ad = new AlertDialog.Builder(getActivity()).create();
                     ad.setCancelable(false); // This blocks the 'BACK' button
                     ad.setMessage("Este aplicativo precisa de permissão para acessar a câmera para funcionar.");
                     ad.setButton(DialogInterface.BUTTON_NEUTRAL, "OK", new DialogInterface.OnClickListener() {
@@ -245,7 +259,13 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                     continue;
                 }
 
-                Prova p = leitor.LerProva(imgOut);
+                Prova p = leitor.LerProva(imgOut, ignorarInvalidos);
+
+                if (p == null) {
+                    Log.d("Leitura", "Leitura ignorada pois o RA ou código da prova é inválido.");
+                    Log.v("Homografia", "Imagem processada em " + workerStopwatch.getElapsedTime() + "ms");
+                    continue;
+                }
 
                 exibir(p);
             }
@@ -261,7 +281,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
             }
         }
 
-        void exibir(Prova prova){
+        void exibir(Prova prova) {
             Log.v("Homografia", "Imagem processada em " + workerStopwatch.getElapsedTime() + "ms");
             setState(State.Completed);
             // Create an instance of the dialog fragment and show it

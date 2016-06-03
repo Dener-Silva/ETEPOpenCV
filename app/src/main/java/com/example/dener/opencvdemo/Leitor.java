@@ -59,7 +59,7 @@ public class Leitor {
      * @param test Imagem da prova. A imagem deve ser binarizada para funcionar corretamente.
      * @return Objeto Prova com as informações relevantes.
      */
-    public Prova LerProva(Mat test) {
+    public Prova LerProva(Mat test, boolean ignorarInvalidos) {
         stopwatch.start();
         mat = test;
         rows = mat.rows();
@@ -67,7 +67,11 @@ public class Leitor {
         Prova p = new Prova();
         //Lendo o RA e código da prova
         p.ra = ReadCode(Campos.posXRA, Campos.posY, Campos.step, Campos.stepY, 8);
+        if (ignorarInvalidos && (p.ra == null || p.ra < 0))
+            return null;
         p.codigoDaProva = ReadCode(Campos.posXCod, Campos.posY, Campos.step, Campos.stepY, 8);
+        if (ignorarInvalidos && (p.codigoDaProva == null || p.codigoDaProva < 0))
+            return null;
         //O tipo de prova é lido como se fosse uma questão (de 3 alternativas).
         p.tipo = ReadQuestion(Tipo.posX, Tipo.posY, Tipo.step, 3);
         //Lendo questões

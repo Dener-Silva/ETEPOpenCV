@@ -5,4 +5,5 @@
     <string name="contornos">Contornos</string>
     <string name="prova">Prova</string>
     <string name="ok">OK</string>
+    <string name="ignorar_invalidos">Ignorar inválidos</string>
 </resources>
