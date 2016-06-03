@@ -37,8 +37,6 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
     // Loads camera view of OpenCV for us to use. This lets us see using OpenCV
     private CameraBridgeViewBase mOpenCvCameraView;
 
-    private AlertDialog ad;
-
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
@@ -161,7 +159,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 } else {
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
-                    ad = new AlertDialog.Builder(getActivity()).create();
+                    AlertDialog ad = new AlertDialog.Builder(getActivity()).create();
                     ad.setCancelable(false); // This blocks the 'BACK' button
                     ad.setMessage("Este aplicativo precisa de permissão para acessar a câmera para funcionar.");
                     ad.setButton(DialogInterface.BUTTON_NEUTRAL, "OK", new DialogInterface.OnClickListener() {
