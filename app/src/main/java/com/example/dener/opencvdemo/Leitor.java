@@ -23,8 +23,6 @@ public class Leitor {
     final int contarPixels = 2;
 
     Stopwatch stopwatch = new Stopwatch();
-    //Tamanho da máscara, em proporção à largura da folha.
-    double maskSize = 0.021437578814628;
 
     //Pontos de interesse.
     //Os pontos devem ser dados como fração
@@ -104,7 +102,7 @@ public class Leitor {
 
         for (int i = 0; i < size; i++) {
             double x = startX + ((double) i * step);
-            if (Average(x, startY, maskSize)) {
+            if (Average(x, startY)) {
                 quant++;
                 ret = i;
             }
@@ -133,7 +131,7 @@ public class Leitor {
             int quant = 0;
             for (int j = 0; j < 10; j++) {
                 double y = startY + ((double) j * stepY);
-                if (Average(x, y, maskSize)) {
+                if (Average(x, y)) {
                     quant++;
                     ret += j * (int) Math.pow (10, size - i - 1);
                 }
@@ -157,14 +155,15 @@ public class Leitor {
      * A imagem de entrada deve ser binarizada para funcionar corretamente.
      * @param startX Ponto X (topo esquerda) para iniciar a leitura
      * @param startY Ponto Y (topo esquerda) para iniciar a leitura
-     * @param maskSize Tamanho do quadrado da alternativa.
      * @return Se esta alternativa foi assinalada.
      */
-    boolean Average(double startX, double startY, double maskSize) {
+    boolean Average(double startX, double startY) {
         int startXPos = (int) Math.round((float) cols * startX);
-        int endXPos = (int) Math.round((float) cols * (startX + maskSize));
+        double maskSizeX = 0.021437578814628;
+        int endXPos = (int) Math.round((float) cols * (startX + maskSizeX));
         int startYPos = (int) Math.round((float) rows * startY);
-        int endYPos = (int) Math.round((float) rows * (startY + maskSize));
+        double maskSizeY = 0.015151515151515;
+        int endYPos = (int) Math.round((float) rows * (startY + maskSizeY));
 
         //Apenas é necessário visitar os pixels até o ponto em que a média já é
         //garantida estar acima ou abaixo de threshold. Isso aumenta bastante a
