@@ -100,6 +100,7 @@ public class MainActivity_show_camera extends AppCompatActivity implements CvCam
                 ignorarInvalidos = isChecked;
             }
         });
+        ignorarInvalidosSw.toggle();
 
         //Checando permissão de acesso à câmera. Caso haja permissão, conectar à câmera.
         //Caso não haja, solicita a permissão ao usuário.
